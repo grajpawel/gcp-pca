@@ -346,10 +346,10 @@ A BCP answers:
 
 Your company runs an online store on Compute Engine (3 VMs in a single zone). You receive a SLA requirement: "99.95 % monthly uptime". The current architecture is a single-zone deployment. Which combination of changes is necessary to meet the SLA?
 
-A) Upgrade VMs to larger instances and enable Compute Engine live migration.
-B) Move to a regional Managed Instance Group (MIG) + Global HTTP(S) Load Balancer.
-C) Move to Cloud Run (serverless) in a single region.
-D) Deploy Spanner database and upgrade network to Dedicated Interconnect.
+- A) Upgrade VMs to larger instances and enable Compute Engine live migration.
+- B) Move to a regional Managed Instance Group (MIG) + Global HTTP(S) Load Balancer.
+- C) Move to Cloud Run (serverless) in a single region.
+- D) Deploy Spanner database and upgrade network to Dedicated Interconnect.
 
 **Answer: B.** Explanation: 99.95 % SLA requires high-availability architecture (zone redundancy). Regional MIG + Global LB provides: (1) ≥2 zones within a region (auto-healing, rolling updates), (2) global load balancer with health checks (automatic failover across zones), (3) managed service (no VM patching burden). Cloud Run (C) is multi-zone HA, but it means re-platforming the application, and the end-to-end SLA still depends on the database tier; the question asks for the change needed to fix the single-zone design. Spanner and Interconnect (D) address the data tier and hybrid connectivity, not the single-zone compute weakness; regional HA is sufficient for 99.95 %.
 
@@ -357,43 +357,43 @@ D) Deploy Spanner database and upgrade network to Dedicated Interconnect.
 
 Your HIPAA-regulated EHR system uses Cloud SQL (zonal, no replication). Requirements: a single-zone failure must be tolerated automatically with no data loss, and after the loss of a whole region the service must be restored within 4 hours, accepting up to 1 hour of data loss. Which configuration fits at reasonable cost?
 
-A) Daily automated backups to Cloud Storage; cross-region manual restore on failure.
-B) Cloud SQL HA (standby in a second zone, synchronous) plus a cross-region read replica to promote in a regional disaster.
-C) Cloud SQL without HA, plus a cross-region read replica to promote on failure.
-D) Spanner multi-region (two read-write regions plus a witness region, synchronous); automatic failover.
+- A) Daily automated backups to Cloud Storage; cross-region manual restore on failure.
+- B) Cloud SQL without HA, plus a cross-region read replica to promote on failure.
+- C) Cloud SQL HA (standby in a second zone, synchronous) plus a cross-region read replica to promote in a regional disaster.
+- D) Spanner multi-region (two read-write regions plus a witness region, synchronous); automatic failover.
 
-**Answer: B.** Explanation: Zone-level protection needs HA (automatic failover, RPO ≈0 via the synchronous standby); region-level DR with RTO 4 h / RPO 1 h is met by a cross-region async replica (RPO = replication lag, promotion within minutes to tens of minutes), which is a pilot-light/warm-standby style design. Daily backups (A) give an RPO of up to 24 hours. C has no automatic zonal failover (a zone failure would need a manual promotion and risks data loss). Spanner (D) exceeds the requirements and means migrating a MySQL/PostgreSQL workload; cost is not justified.
+**Answer: C.** Explanation: Zone-level protection needs HA (automatic failover, RPO ≈0 via the synchronous standby); region-level DR with RTO 4 h / RPO 1 h is met by a cross-region async replica (RPO = replication lag, promotion within minutes to tens of minutes), which is a pilot-light/warm-standby style design. Daily backups (A) give an RPO of up to 24 hours. B has no automatic zonal failover (a zone failure would need a manual promotion and risks data loss). Spanner (D) exceeds the requirements and means migrating a MySQL/PostgreSQL workload; cost is not justified.
 
 ### Scenario 3: Latency-sensitive personalized recommendation engine
 
 Your Gen-AI recommendation engine reads user embeddings + product catalog data on every request; median read latency is 200 ms, and you have a P99 latency SLO of <100 ms. Which optimization is most effective?
 
-A) Migrate from Cloud SQL to Spanner (global database).
-B) Use Memorystore (Redis) for user embeddings cache; embed-refresh every 6 hours.
-C) Deploy horizontal Dataflow pipeline to pre-compute all embeddings hourly.
-D) Upgrade Cloud SQL machines to larger compute (vertical scaling).
+- A) Migrate from Cloud SQL to Spanner (global database).
+- B) Deploy horizontal Dataflow pipeline to pre-compute all embeddings hourly.
+- C) Upgrade Cloud SQL machines to larger compute (vertical scaling).
+- D) Use Memorystore (Redis) for user embeddings cache; embed-refresh every 6 hours.
 
-**Answer: B.** Explanation: The bottleneck is latency (200 ms → 100 ms SLO), not throughput. Spanner (A) is a scale/consistency answer, not a latency fix (synchronous multi-region writes add latency; it is no faster than a cache for hot reads). Dataflow (C) helps with batch pre-compute but doesn't cache the results in fast memory. Vertical scaling (D) improves single-query latency somewhat but plateaus. **Memorystore caching (B)** is most effective: embed queries hit Redis (sub-millisecond), reducing 200 ms to <5 ms. 6-hour TTL is acceptable for recommendations (stale is ok; freshness trade-off). This directly targets the latency bottleneck.
+**Answer: D.** Explanation: The bottleneck is latency (200 ms → 100 ms SLO), not throughput. Spanner (A) is a scale/consistency answer, not a latency fix (synchronous multi-region writes add latency; it is no faster than a cache for hot reads). Dataflow (B) helps with batch pre-compute but doesn't cache the results in fast memory. Vertical scaling (C) improves single-query latency somewhat but plateaus. **Memorystore caching (D)** is most effective: embed queries hit Redis (sub-millisecond), reducing 200 ms to <5 ms. 6-hour TTL is acceptable for recommendations (stale is ok; freshness trade-off). This directly targets the latency bottleneck.
 
 ### Scenario 4: Integrating third-party inventory API
 
 Your e-commerce app queries a vendor's inventory API (latency 500 ms, SLA 99 %). Your app SLA target is 99.9 %. Synchronously calling the API on every request breaks your SLA. How should you refactor?
 
-A) Cache API responses in Memorystore with 1-hour TTL; serve stale inventory if API unavailable.
-B) Add circuit-breaker + exponential backoff retry; keep sync API in request path.
-C) Async: publish inventory-check events to Pub/Sub; worker polls API; update Firestore; request queries Firestore (eventual consistency, <1 sec).
-D) Negotiate 99.9 % SLA with vendor.
+- A) Async: publish inventory-check events to Pub/Sub; worker polls API; update Firestore; request queries Firestore (eventual consistency, <1 sec).
+- B) Cache API responses in Memorystore with 1-hour TTL; serve stale inventory if API unavailable.
+- C) Add circuit-breaker + exponential backoff retry; keep sync API in request path.
+- D) Negotiate 99.9 % SLA with vendor.
 
-**Answer: C.** Explanation: Sync API (500 ms + 99 % SLA) on every request → composite SLA drops to 99.9 % × 99 % = 98.91 % (below target). Caching (A) works but risks stale inventory. Retry (B) improves reliability but doesn't reduce composite latency or SLA. Async (C) decouples inventory-check from request path: request returns immediately, inventory updates asynchronously; Firestore query is <1 sec (no external dependency). The request path no longer depends on the vendor's 99 % SLA, so your own SLA target becomes achievable. Negotiating SLA (D) is unrealistic.
+**Answer: A.** Explanation: Sync API (500 ms + 99 % SLA) on every request → composite SLA drops to 99.9 % × 99 % = 98.91 % (below target). Caching (B) works but risks stale inventory. Retry (C) improves reliability but doesn't reduce composite latency or SLA. Async (A) decouples inventory-check from request path: request returns immediately, inventory updates asynchronously; Firestore query is <1 sec (no external dependency). The request path no longer depends on the vendor's 99 % SLA, so your own SLA target becomes achievable. Negotiating SLA (D) is unrealistic.
 
 ### Scenario 5: Build vs Buy: AI-powered image moderation
 
 Your platform allows user-uploaded images. You must moderate (filter inappropriate content). Build your own ML model (8–12 weeks, team of 2), or use a pre-built Google API such as Cloud Vision API SafeSearch detection (or Gemini multimodal with safety filters)? Business constraint: "market in 6 weeks; moderation quality of the pre-built service is acceptable after a pilot".
 
-A) **Build:** train custom model on your data; potentially higher accuracy, but 12 weeks (miss market).
-B) **Buy:** pre-built Vision API SafeSearch; about 1 week integration; accuracy acceptable per the pilot.
-C) **Modify:** Vision API for first-pass moderation plus a custom model for edge cases (6–8 weeks); best of both.
-D) **Deprecate:** don't moderate; accept legal risk.
+- A) **Build:** train custom model on your data; potentially higher accuracy, but 12 weeks (miss market).
+- B) **Buy:** pre-built Vision API SafeSearch; about 1 week integration; accuracy acceptable per the pilot.
+- C) **Modify:** Vision API for first-pass moderation plus a custom model for edge cases (6–8 weeks); best of both.
+- D) **Deprecate:** don't moderate; accept legal risk.
 
 **Answer: B.** Explanation: Market timeline (6 weeks) is the hard constraint. Build (A) misses deadline. Buy (B) meets the timeline with acceptable quality. Modify (C) adds weeks of integration and ML work; 6–8 weeks is still risky. Deprecate (D) is not an option (legal risk). **Buy** wins on time-to-market.
 
@@ -401,12 +401,12 @@ D) **Deprecate:** don't moderate; accept legal risk.
 
 Your company has a BCP with RTO 2 hours and RPO 1 hour for the critical ERP system. The runbook was last tested 18 months ago; it mentions a retired data centre. During a disaster simulation, the restore took 6 hours (exceeding RTO). What is the primary issue?
 
-A) Runbook was out of date; procedures don't match current infrastructure.
-B) Recovery infrastructure (standby region) is undersized; needs bigger VMs.
-C) Database too large; restore is slow.
-D) Incorrect RTO/RPO targets (should be 8 hours / 4 hours).
+- A) Recovery infrastructure (standby region) is undersized; needs bigger VMs.
+- B) Database too large; restore is slow.
+- C) Incorrect RTO/RPO targets (should be 8 hours / 4 hours).
+- D) Runbook was out of date; procedures don't match current infrastructure.
 
-**Answer: A.** Explanation: **BCP/DR plans must be tested regularly** (e.g. at least quarterly and after major infrastructure changes). An 18-month-old runbook is stale (infra changes, retired data centre referenced). Actual RTO (6 hours) vs target (2 hours) = gap. Root cause is outdated procedure. Fix: test the runbook on a regular schedule; measure actual RTO/RPO; update based on findings. Undersizing (B) is possible, but the scenario states runbook was untested, not infrastructure. Database size (C) is a symptom, not the root cause; would still fail with outdated runbook. Targets (D) should match business need, not be adjusted down because testing fails.
+**Answer: D.** Explanation: **BCP/DR plans must be tested regularly** (e.g. at least quarterly and after major infrastructure changes). An 18-month-old runbook is stale (infra changes, retired data centre referenced). Actual RTO (6 hours) vs target (2 hours) = gap. Root cause is outdated procedure. Fix: test the runbook on a regular schedule; measure actual RTO/RPO; update based on findings. Undersizing (A) is possible, but the scenario states runbook was untested, not infrastructure. Database size (B) is a symptom, not the root cause; would still fail with outdated runbook. Targets (C) should match business need, not be adjusted down because testing fails.
 
 ## Sources
 

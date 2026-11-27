@@ -248,43 +248,43 @@ Is it about "compliance: did X event happen?"
 
 **Scenario 1**: You run a REST API serving 10,000 RPS. SLO is 99.9% of requests ≤ 100ms. Yesterday, error rate spiked to 5%, but your monitoring dashboard showed no alerts. Why?
 
-A) Cloud Monitoring was disabled  
-B) Your alerting rules only checked CPU %, not error rate (symptom-based alerts missing)  
-C) Uptime check passed because endpoint returned 200 OK  
-D) BigQuery sink was misconfigured  
+- A) Cloud Monitoring was disabled
+- B) Uptime check passed because endpoint returned 200 OK
+- C) BigQuery sink was misconfigured
+- D) Your alerting rules only checked CPU %, not error rate (symptom-based alerts missing)
 
-**Answer: B**. The trap: you were alerting on infrastructure (CPU) not symptoms (errors, latency). SLO-based alerting would have fired immediately. Why others wrong: (A) would disable all dashboards; (C) uptime check measures availability, not error rate; (D) sink doesn't affect real-time alerting.
+**Answer: D**. The trap: you were alerting on infrastructure (CPU) not symptoms (errors, latency). SLO-based alerting would have fired immediately. Why others wrong: (A) would disable all dashboards; (B) uptime check measures availability, not error rate; (C) sink doesn't affect real-time alerting.
 
 ---
 
 **Scenario 2**: Your GKE cluster runs Altostrat's metadata extraction pipeline. A developer asks to run a penetration test on the Pub/Sub topic to find injection vectors. What do you say?
 
-A) "Get written permission from Google Cloud first"  
-B) "OK, it's your resource; you don't need to notify Google, as long as you follow the Acceptable Use Policy and ToS"  
-C) "Use only staging Pub/Sub topics, not production"  
-D) "Pen-testing Pub/Sub is never allowed on Google Cloud"  
+- A) "Get written permission from Google Cloud first"
+- B) "Use only staging Pub/Sub topics, not production"
+- C) "OK, it's your resource; you don't need to notify Google, as long as you follow the Acceptable Use Policy and ToS"
+- D) "Pen-testing Pub/Sub is never allowed on Google Cloud"
 
-**Answer: B**. Google's penetration testing policy does not require you to notify Google for your own resources; you must follow the AUP and ToS and only affect your own projects. Constraints: (C) is overly restrictive as a rule (staging is good practice, but production is permitted if you own it); no DoS, no access to other customers' resources. Why others wrong: (A) not required for your own resources; (D) false.
+**Answer: C**. Google's penetration testing policy does not require you to notify Google for your own resources; you must follow the AUP and ToS and only affect your own projects. Constraints: (B) is overly restrictive as a rule (staging is good practice, but production is permitted if you own it); no DoS, no access to other customers' resources. Why others wrong: (A) not required for your own resources; (D) false.
 
 ---
 
 **Scenario 3**: Your Cymbal Retail product-enrichment pipeline processes 50,000 items/hour. After a code deploy, latency grew from 2ms to 50ms per item. You ran a load test and it showed normal throughput. Where do you look first?
 
-A) Cloud Monitoring CPU % metric  
-B) Cloud Profiler (CPU/memory hotspots in the code)  
-C) Cloud Trace (latency breakdown across services in the pipeline)  
-D) Increase the number of replicas  
+- A) Cloud Trace (latency breakdown across services in the pipeline)
+- B) Cloud Monitoring CPU % metric
+- C) Cloud Profiler (CPU/memory hotspots in the code)
+- D) Increase the number of replicas
 
-**Answer: C**. Cloud Trace shows you which service is slow (enrichment service vs. storage write vs. image processing). Profiler helps once you know which service. Why others wrong: (A) CPU may look fine even if a lock contention issue exists; (D) scaling helps only if the bottleneck is capacity, not a code bug.
+**Answer: A**. Cloud Trace shows you which service is slow (enrichment service vs. storage write vs. image processing). Profiler helps once you know which service. Why others wrong: (B) CPU may look fine even if a lock contention issue exists; (D) scaling helps only if the bottleneck is capacity, not a code bug.
 
 ---
 
 **Scenario 4**: EHR's incident commander runs a postmortem on a 30-min database outage. A team member says, "The on-call engineer should have caught this earlier." What is the most important item for the postmortem to address?
 
-A) Fire the on-call engineer for missing alerts  
-B) Identify the root cause and design preventive controls (better alerting, automation, chaos testing); frame as "we, as a team"  
-C) Blame the on-prem legacy system for the outage  
-D) Skip the postmortem and move to fire-fighting  
+- A) Fire the on-call engineer for missing alerts
+- B) Identify the root cause and design preventive controls (better alerting, automation, chaos testing); frame as "we, as a team"
+- C) Blame the on-prem legacy system for the outage
+- D) Skip the postmortem and move to fire-fighting
 
 **Answer: B**. Blameless postmortems focus on **systemic improvements**, not blame. The goal is to surface why alerts failed (were they too noisy? Did on-call not see them?), design better ones, and automate recovery. Why others wrong: (A) is blame culture, not learning; (C) doesn't fix the problem; (D) repeats the cycle.
 
@@ -292,21 +292,21 @@ D) Skip the postmortem and move to fire-fighting
 
 **Scenario 5**: You want to validate that KnightMotives' autonomous vehicle API can handle a regional failover to DR (RTO 15 min, RPO 1 hour). Which test do you run?
 
-A) Load test with 2× expected QPS in staging  
-B) Stress test pushing 10× capacity on-prem  
-C) DR drill: fail over to DR region, measure time to recovery and data loss  
-D) Chaos engineering: inject 100ms latency on the gRPC call  
+- A) Load test with 2× expected QPS in staging
+- B) Stress test pushing 10× capacity on-prem
+- C) Chaos engineering: inject 100ms latency on the gRPC call
+- D) DR drill: fail over to DR region, measure time to recovery and data loss
 
-**Answer: C**. A DR drill explicitly tests failover mechanics and validates RTO/RPO. Why others wrong: (A) load/stress test capacity, not failover; (B) on-prem capacity doesn't test GCP DR; (D) chaos test resilience, not failover readiness.
+**Answer: D**. A DR drill explicitly tests failover mechanics and validates RTO/RPO. Why others wrong: (A) load/stress test capacity, not failover; (B) on-prem capacity doesn't test GCP DR; (C) chaos test resilience, not failover readiness.
 
 ---
 
 **Scenario 6**: An LLM-powered chatbot at Altostrat outputs a summary containing a user's phone number. Your log-based monitoring didn't catch it. What signal should you add?
 
-A) Cloud Profiler (CPU usage)  
-B) Cloud Trace (request latency)  
-C) Sensitive Data Protection (DLP) analyzing model outputs for PII  
-D) Error Reporting (crash grouping)  
+- A) Cloud Profiler (CPU usage)
+- B) Cloud Trace (request latency)
+- C) Sensitive Data Protection (DLP) analyzing model outputs for PII
+- D) Error Reporting (crash grouping)
 
 **Answer: C**. DLP scans outputs for PII patterns; log-based alerts trigger if detection rate exceeds threshold. Why others wrong: (A)/(B) measure performance, not safety; (D) groups crashes, not PII leaks.
 
@@ -314,10 +314,10 @@ D) Error Reporting (crash grouping)
 
 **Scenario 7**: Your team's error budget for a 99.9% SLO is 43.2 minutes/month (0.1% × 30 days). Current burn rate is 20 minutes/week. At this rate, when will the error budget be exhausted?
 
-A) In ~2 weeks  
-B) In ~1 month (no action needed)  
-C) Never (burn rate is sustainable)  
-D) The SLO is unachievable  
+- A) In ~2 weeks
+- B) In ~1 month (no action needed)
+- C) Never (burn rate is sustainable)
+- D) The SLO is unachievable
 
 **Answer: A**. 43.2 min budget / (20 min/week) ≈ 2.16 weeks. Action: halt feature rollout, focus on reliability fixes. Why others wrong: (B) ignores burn rate; (C) wrong math; (D) SLO is fine, execution is the issue.
 
@@ -325,10 +325,10 @@ D) The SLO is unachievable
 
 **Scenario 8**: You deploy a new recommendation model to 10% of Cymbal's traffic (canary). Metrics look good for 1 hour. What's the next step?
 
-A) Roll back (model may degrade after 1 hour)  
-B) Proceed to 50% traffic; set SLO gate (block full rollout if error rate > 1% or latency p95 > 200ms)  
-C) Roll out to 100% immediately  
-D) A/B test against old model forever  
+- A) Roll back (model may degrade after 1 hour)
+- B) Proceed to 50% traffic; set SLO gate (block full rollout if error rate > 1% or latency p95 > 200ms)
+- C) Roll out to 100% immediately
+- D) A/B test against old model forever
 
 **Answer: B**. Canary → measure on SLO → gate-check → proceed to higher traffic. Why others wrong: (A) premature rollback; (C) skips gradual validation (risky); (D) eventually you commit or rollback.
 

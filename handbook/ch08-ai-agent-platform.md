@@ -464,96 +464,104 @@ This entire chapter is AI/ML-focused, so the angle is intrinsic. Key considerati
 ## Practice scenarios
 
 **Scenario 1: Multi-turn customer support agent**
+
 A customer-service team wants a 24/7 chatbot that remembers customer history (order status, returns, preferences) across sessions. The bot should handle 1000 concurrent users, respond in <1 second, and escalate unresolved issues to a human agent. Which architecture do you recommend?
 
-A) Stateless Gemini Flash API calls + Cloud Logging for history
-B) Agent Runtime + Agent Platform Sessions (Memory Bank for customer context) + function calling for order lookup
-C) Cloud Run service with Gemini integration; store session state in Memorystore
-D) NotebookLM Enterprise with manual context passing
+- A) Agent Runtime + Agent Platform Sessions (Memory Bank for customer context) + function calling for order lookup
+- B) Stateless Gemini Flash API calls + Cloud Logging for history
+- C) Cloud Run service with Gemini integration; store session state in Memorystore
+- D) NotebookLM Enterprise with manual context passing
 
-**Answer:** **B**. Agent Platform Sessions keeps the history of the current conversation; Memory Bank provides long-term memory of customer facts/preferences across sessions (the "across sessions" requirement); Agent Runtime is the managed, scalable host; function calling enables order lookups. Option A loses context between turns; C requires custom session management; D is for document research, not agent runtime.
+**Answer:** **A**. Agent Platform Sessions keeps the history of the current conversation; Memory Bank provides long-term memory of customer facts/preferences across sessions (the "across sessions" requirement); Agent Runtime is the managed, scalable host; function calling enables order lookups. Option B loses context between turns; C requires custom session management; D is for document research, not agent runtime.
 
 ---
 
 **Scenario 2: Image-heavy e-commerce catalog enrichment**
+
 Cymbal Retail has 500k product images and wants to auto-generate titles, descriptions, and color-variant images for fast onboarding. Expected output: metadata in BigQuery, images in Cloud Storage. Latency: batch (12–24 hours acceptable). Which services combo?
 
-A) Imagen in a real-time online request path + Vision API in parallel
-B) Agent Platform Pipeline (Dataflow for splitting images) → Vision API → BigQuery → Imagen / Gemini image model → Cloud Storage, with human approval gate
-C) Cloud Run function triggered per image; call Vision + Imagen APIs sequentially
-D) BQML image classifier + Imagen, no orchestration
+- A) Imagen in a real-time online request path + Vision API in parallel
+- B) Cloud Run function triggered per image; call Vision + Imagen APIs sequentially
+- C) Agent Platform Pipeline (Dataflow for splitting images) → Vision API → BigQuery → Imagen / Gemini image model → Cloud Storage, with human approval gate
+- D) BQML image classifier + Imagen, no orchestration
 
-**Answer:** **B**. Pipelines enable orchestration, lineage, and human-in-the-loop approval. Dataflow scales to 500k images; the pipeline DAG can parallelize Vision API calls and image generation. Option A ignores the batch nature (and offers no approval step); C lacks orchestration, retry and lineage; D doesn't include a managed generation workflow.
+**Answer:** **C**. Pipelines enable orchestration, lineage, and human-in-the-loop approval. Dataflow scales to 500k images; the pipeline DAG can parallelize Vision API calls and image generation. Option A ignores the batch nature (and offers no approval step); B lacks orchestration, retry and lineage; D doesn't include a managed generation workflow.
 
 ---
 
 **Scenario 3: RAG for internal policy agent**
+
 KnightMotives HR wants an agent that answers employee questions about benefits, leave policies, and compliance rules. The policy documents change monthly; <2 sec response latency required. Policies are confidential (not public web). Which RAG approach?
 
-A) Google Search Grounding + Gemini Agent
-B) RAG Engine with documents uploaded to managed pipeline; monthly refresh via Agent Platform Pipelines
-C) Vector Search with manual embedding pipeline; agent queries index
-D) BigQuery SQL for policy lookup; no vector embeddings
+- A) Google Search Grounding + Gemini Agent
+- B) Vector Search with manual embedding pipeline; agent queries index
+- C) BigQuery SQL for policy lookup; no vector embeddings
+- D) RAG Engine with documents uploaded to managed pipeline; monthly refresh via Agent Platform Pipelines
 
-**Answer:** **B**. RAG Engine is managed (no infrastructure to run), handles chunking/embedding/retrieval, and supports monthly refresh via Pipelines. (Agent Search is an equally valid managed alternative; it is not offered here.) Private docs rule out Google Search grounding (A). Option C requires a custom embedding pipeline (more ops). D is for structured data, not free-form policy text.
+**Answer:** **D**. RAG Engine is managed (no infrastructure to run), handles chunking/embedding/retrieval, and supports monthly refresh via Pipelines. (Agent Search is an equally valid managed alternative; it is not offered here.) Private docs rule out Google Search grounding (A). Option B requires a custom embedding pipeline (more ops). C is for structured data, not free-form policy text.
 
 ---
 
 **Scenario 4: Model selection for vehicle diagnostics**
+
 An in-vehicle system needs to classify diagnostic error codes with very low latency over unreliable cellular, and must keep working offline (no cloud round-trip). Which model and deployment?
 
-A) Gemini Pro tier (best accuracy, cloud-based)
-B) A small open model such as Gemma, quantized and deployed on-device, with cloud Gemini Flash-Lite for non-critical enrichment
-C) Gemini Pro with a high thinking budget
-D) Gemini Omni Flash for multimodal input
+- A) Gemini Pro tier (best accuracy, cloud-based)
+- B) A small open model such as Gemma, quantized and deployed on-device, with cloud Gemini Flash-Lite for non-critical enrichment
+- C) Gemini Pro with a high thinking budget
+- D) Gemini Omni Flash for multimodal input
 
 **Answer:** **B**. Offline capability requires the model to run on the device, and the hosted Gemini models (including Flash-Lite) are cloud APIs, so an open on-device model (Gemma family ⚠ verify device-class support) is the fit; cloud Flash-Lite is the cheap/fast tier for what can tolerate connectivity. Pro (A, C) is cloud-only and over-specced for classification; Omni (D) targets video generation/editing, not error codes.
 
 ---
 
 **Scenario 5: Endpoint cost optimization**
+
 Altostrat Media runs a Gemini-powered summarisation feature with a steady, high, around-the-clock request volume plus occasional spikes. They pay Standard pay-as-you-go today and need predictable latency during peaks. What is the best consumption model?
 
-A) Stay on Standard pay-as-you-go only; no commitment
-B) Provisioned Throughput sized for the steady baseline, with pay-as-you-go absorbing spikes above it
-C) Batch inference for all traffic; cheapest
-D) Buy Provisioned Throughput for the custom recommendation model endpoint
+- A) Stay on Standard pay-as-you-go only; no commitment
+- B) Batch inference for all traffic; cheapest
+- C) Buy Provisioned Throughput for the custom recommendation model endpoint
+- D) Provisioned Throughput sized for the steady baseline, with pay-as-you-go absorbing spikes above it
 
-**Answer:** **B**. Provisioned Throughput (GSUs, GA) reserves capacity for predictable latency and cost at steady high volume; overflow beyond reserved capacity can use pay-as-you-go. A offers no capacity guarantee at peaks; C removes real-time responses; D is wrong because Provisioned Throughput applies to Gemini/supported partner models, not custom-trained model endpoints (those bill for node-hours). The break-even point depends on current pricing, so compare using the pricing calculator.
+**Answer:** **D**. Provisioned Throughput (GSUs, GA) reserves capacity for predictable latency and cost at steady high volume; overflow beyond reserved capacity can use pay-as-you-go. A offers no capacity guarantee at peaks; B removes real-time responses; C is wrong because Provisioned Throughput applies to Gemini/supported partner models, not custom-trained model endpoints (those bill for node-hours). The break-even point depends on current pricing, so compare using the pricing calculator.
 
 ---
 
 **Scenario 6: Responsible AI in agent function calling**
+
 An agent can call functions to look up customer PII (name, SSN, account balance) and reply to users. How do you prevent prompt injection attacks where a user tricks the agent into exposing sensitive data?
 
-A) Add guardrail prompts ("Do not share PII")
-B) Restrict function schemas and tool permissions (least privilege, only non-sensitive fields); screen prompts/responses with Model Armor; use Sensitive Data Protection to redact PII; validate user input
-C) Disable function calling; answer all questions from prompt
-D) Use a private LLM with custom safety training
+- A) Add guardrail prompts ("Do not share PII")
+- B) Disable function calling; answer all questions from prompt
+- C) Restrict function schemas and tool permissions (least privilege, only non-sensitive fields); screen prompts/responses with Model Armor; use Sensitive Data Protection to redact PII; validate user input
+- D) Use a private LLM with custom safety training
 
-**Answer:** **B**. Defense in depth: least-privilege tool schemas limit what can be returned (A is insufficient); Model Armor screens for prompt injection/jailbreaks and sensitive data in prompts and responses; SDP redacts PII; input validation reduces attack surface. Option A is ineffective (prompt-level guardrails bypass via jailbreaks); C removes utility; D is not practical on exam.
+**Answer:** **C**. Defense in depth: least-privilege tool schemas limit what can be returned (A is insufficient); Model Armor screens for prompt injection/jailbreaks and sensitive data in prompts and responses; SDP redacts PII; input validation reduces attack surface. Option A is ineffective (prompt-level guardrails bypass via jailbreaks); B removes utility; D is not practical on exam.
 
 ---
 
 **Scenario 7: Geographically distributed agents**
+
 EHR Healthcare needs a multi-region HIPAA-compliant system. Agent Platform is deployed in us-central1, but users are in us-east1, europe-west1 and europe-central2 (EU patient data must stay in the EU). How to minimize latency and ensure data residency?
 
-A) Replicate Agent Runtime in each region; use Cloud CDN
-B) Deploy regional Agent Runtime/endpoints per geography (EU data in EU regions) behind a global load balancer routing by user location; enforce location with Organization Policy resource-location constraints and regional endpoints; VPC Service Controls for exfiltration protection
-C) Single Agent Runtime in us-central1; use Cloud Armor geo-routing
-D) On-premises private agent runtime
+- A) Deploy regional Agent Runtime/endpoints per geography (EU data in EU regions) behind a global load balancer routing by user location; enforce location with Organization Policy resource-location constraints and regional endpoints; VPC Service Controls for exfiltration protection
+- B) Replicate Agent Runtime in each region; use Cloud CDN
+- C) Single Agent Runtime in us-central1; use Cloud Armor geo-routing
+- D) On-premises private agent runtime
 
-**Answer:** **B**. Regional deployments keep EU data and processing in EU regions and put compute near users; Org Policy location constraints and regional endpoints are what enforce residency, while VPC-SC prevents data exfiltration (it does not itself control where data is stored). CDN (A) does not apply to agent state. Armor (C) is a security product, not a latency/residency tool. On-prem (D) gives up the managed service for no stated requirement. For HIPAA, a BAA covering the services used is also required.
+**Answer:** **A**. Regional deployments keep EU data and processing in EU regions and put compute near users; Org Policy location constraints and regional endpoints are what enforce residency, while VPC-SC prevents data exfiltration (it does not itself control where data is stored). CDN (B) does not apply to agent state. Armor (C) is a security product, not a latency/residency tool. On-prem (D) gives up the managed service for no stated requirement. For HIPAA, a BAA covering the services used is also required.
 
 ---
 
 **Scenario 8: Choosing between Model Garden and custom training**
+
 A Cymbal partner wants to deploy a proprietary recommendation model. They have 1TB of labeled data, custom loss function (not standard sklearn), and need monthly retraining. Model Garden doesn't have their algorithm. Should they:
 
-A) Use AutoML; Google handles retraining
-B) Custom training container (PyTorch) + Pipelines for monthly retraining; Endpoints for serving
-C) BQML (simpler, no custom code)
-D) Llama fine-tuning via Model Garden
+- A) Use AutoML; Google handles retraining
+- B) Custom training container (PyTorch) + Pipelines for monthly retraining; Endpoints for serving
+- C) BQML (simpler, no custom code)
+- D) Llama fine-tuning via Model Garden
 
 **Answer:** **B**. Custom training with Pipelines is the only option for non-standard algorithms and monthly automation. AutoML (A) does not let you supply a custom loss function or custom algorithm. BQML (C) is limited to supported model types. Model Garden Llama (D) is for LLMs, not recommendation models.
 

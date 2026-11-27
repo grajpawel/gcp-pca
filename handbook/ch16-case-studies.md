@@ -1022,10 +1022,10 @@ Why others wrong:
 
 Altostrat's video-moderation Gemini model has a 5 % false-positive rate (flags appropriate content as inappropriate). Every false positive costs Altostrat a complaint + manual review (30 min per review). They want to reduce false positives to <1 %. What should they do?
 
-A. Switch to Vision API (label detection) instead of Gemini; it has lower false-positive rate.  
-B. Fine-tune Gemini on Altostrat's historical moderation logs; use HITL review to collect feedback on false positives; retrain quarterly.  
-C. Use a threshold-based approach: flag only if confidence > 0.99 (not 0.5); adjust to false-positive rate <1 %.  
-D. Use an ensemble: run both Vision API and Gemini; flag only if both agree.
+- A. Switch to Vision API (label detection) instead of Gemini; it has lower false-positive rate.
+- B. Fine-tune Gemini on Altostrat's historical moderation logs; use HITL review to collect feedback on false positives; retrain quarterly.
+- C. Use a threshold-based approach: flag only if confidence > 0.99 (not 0.5); adjust to false-positive rate <1 %.
+- D. Use an ensemble: run both Vision API and Gemini; flag only if both agree.
 
 **Answer: B.** Reducing false positives requires domain-specific labelled data. **B** is the standard approach:
 - Collect data: log all false positives + human feedback (HITL), which also supports the auditability requirement
@@ -1044,10 +1044,10 @@ Why others wrong:
 
 Cymbal's conversational agent has been live for 1 month. They see that 20 % of customer queries result in "I don't understand" fallbacks to a human agent. Common failures: "Find dresses with pockets," "Show me sizes XS to M," "Sort by lowest price." How should they diagnose and fix this?
 
-A. Log all unresolved intents to BigQuery; cluster by error type; add function calls to Gemini for top-10 clusters (e.g., `get_products(has_pockets=True)`); measure resolution rate weekly.  
-B. Hire more customer-service representatives; the agent is not sophisticated enough.  
-C. Replace the agent with a different chatbot product, on the assumption that another platform has pre-built intent matching.  
-D. Move to the largest available Gemini model without changing how the agent calls the product catalogue.
+- A. Log all unresolved intents to BigQuery; cluster by error type; add function calls to Gemini for top-10 clusters (e.g., `get_products(has_pockets=True)`); measure resolution rate weekly.
+- B. Hire more customer-service representatives; the agent is not sophisticated enough.
+- C. Replace the agent with a different chatbot product, on the assumption that another platform has pre-built intent matching.
+- D. Move to the largest available Gemini model without changing how the agent calls the product catalogue.
 
 **Answer: A.** The failing queries are structured catalogue searches (attribute filters, ranges, sorting), so the gap is tool/function integration and a feedback loop, not model size. **A** is the diagnostic + iterative fix:
 - Log all unresolved queries → BigQuery
@@ -1067,12 +1067,12 @@ Why others wrong:
 
 EHR's on-prem insurer API (eligibility checks) has a p99 latency of 200 ms. After moving to GCP (Apigee → Cloud Run → backend insurer API via Dedicated Interconnect), p99 latency is now 500 ms. This breaks EHR's clinic-check-in flow (target: <300 ms). What should they investigate?
 
-A. Increase Apigee provisioning (more nodes); scale up Cloud Run autoscaler.  
-B. Measure latency on each hop (Apigee, Cloud Run, Interconnect path, insurer endpoint) with tracing and Network Intelligence Center, and check region placement relative to the Interconnect attachment.  
-C. Reduce Cloud Run timeout (forces fail-fast); implement client-side caching of eligibility checks (cache locally for 5 minutes).  
-D. Add Cloud CDN to cache eligibility responses; set TTL = 5 minutes.
+- A. Increase Apigee provisioning (more nodes); scale up Cloud Run autoscaler.
+- B. Reduce Cloud Run timeout (forces fail-fast); implement client-side caching of eligibility checks (cache locally for 5 minutes).
+- C. Add Cloud CDN to cache eligibility responses; set TTL = 5 minutes.
+- D. Measure latency on each hop (Apigee, Cloud Run, Interconnect path, insurer endpoint) with tracing and Network Intelligence Center, and check region placement relative to the Interconnect attachment.
 
-**Answer: B.** Latency increased by 2.5x; likely culprit is network or code. **B** is the diagnostic approach:
+**Answer: D.** Latency increased by 2.5x; likely culprit is network or code. **D** is the diagnostic approach:
 - Measure network latency along the path (Network Intelligence Center Performance Dashboard / Connectivity Tests, Cloud Monitoring Interconnect and VLAN attachment metrics, and a test from a VM to the on-prem insurer endpoint). Note that `gcloud compute interconnects describe` shows configuration and state, not latency
 - Trace the request path (Cloud Trace and Cloud Logging, including Apigee analytics/trace) to see where time is spent: Apigee policies, Cloud Run, network, or the insurer endpoint
 - Check the Interconnect location/region: if Apigee/Cloud Run run in a region far from the Interconnect attachment, the extra distance adds latency; co-locating them helps
@@ -1080,8 +1080,8 @@ D. Add Cloud CDN to cache eligibility responses; set TTL = 5 minutes.
 
 Why others wrong:
 - A: Scaling Apigee/Cloud Run helps with concurrency, not the latency of individual requests. The problem is not throughput.
-- C: Fail-fast doesn't solve latency; it just fails faster. Caching may help in some cases, but it doesn't address the root cause, and eligibility data may be time-sensitive.
-- D: Cloud CDN is built for caching static or cacheable web content at the edge; per-patient eligibility responses contain sensitive data and should not be cached publicly. It does not address the root cause.
+- B: Fail-fast doesn't solve latency; it just fails faster. Caching may help in some cases, but it doesn't address the root cause, and eligibility data may be time-sensitive.
+- C: Cloud CDN is built for caching static or cacheable web content at the edge; per-patient eligibility responses contain sensitive data and should not be cached publicly. It does not address the root cause.
 
 ---
 
@@ -1089,19 +1089,19 @@ Why others wrong:
 
 (Hypothetical numbers for illustration.) KnightMotives' Pub/Sub → Dataflow telemetry pipeline is falling behind. Roughly 58,000 connected vehicles × 10 events/min ≈ 835 million events/day arrive, but the pipeline is only processing about 500 million events/day, so the Pub/Sub backlog keeps growing and the Firestore dashboard shows increasingly stale data. What should they do first?
 
-A. Let Dataflow autoscale on the Pub/Sub backlog and raise the maximum worker count; find and fix bottlenecks (hot keys, slow sinks such as Firestore write limits).  
-B. Use Pub/Sub publisher batching to reduce API calls and increase throughput.  
-C. Reduce the event volume only by changing in-vehicle firmware to aggregate before publishing, and leave the pipeline as is.  
-D. Switch from Dataflow to self-managed Spark on GKE.
+- A. Use Pub/Sub publisher batching to reduce API calls and increase throughput.
+- B. Let Dataflow autoscale on the Pub/Sub backlog and raise the maximum worker count; find and fix bottlenecks (hot keys, slow sinks such as Firestore write limits).
+- C. Reduce the event volume only by changing in-vehicle firmware to aggregate before publishing, and leave the pipeline as is.
+- D. Switch from Dataflow to self-managed Spark on GKE.
 
-**Answer: A.** Backlog grows when the consumer is slower than the producers, and Pub/Sub buffers the difference. **A** fixes the consumer side with the least change:
+**Answer: B.** Backlog grows when the consumer is slower than the producers, and Pub/Sub buffers the difference. **B** fixes the consumer side with the least change:
 - Dataflow streaming autoscaling adds workers when the backlog grows; the cap (max workers) and per-worker resources may be what limits throughput now
 - Check for pipeline bottlenecks: skewed keys (e.g., one hot vehicle_id), expensive per-element work, and sink write limits
 - Once caught up, the backlog drains because capacity exceeds the arrival rate
 - Edge aggregation (summaries + anomalies instead of every raw event) is a good complementary long-term measure to cut volume and cost, but it needs firmware changes and OTA rollout and does not fix the pipeline today, so it is not the first action
 
 Why others wrong:
-- B: Publisher batching makes publishing more efficient but does not raise the consumer (Dataflow) throughput that is the bottleneck.
+- A: Publisher batching makes publishing more efficient but does not raise the consumer (Dataflow) throughput that is the bottleneck.
 - C: As a sole fix it is slow (firmware rollout), risky, and loses raw data detail; the pipeline stays under-provisioned in the meantime.
 - D: Self-managed Spark adds operational burden and is not inherently faster; Dataflow is the managed stream-processing service.
 
@@ -1111,12 +1111,12 @@ Why others wrong:
 
 (Hypothetical numbers for illustration; check current pricing.) Cymbal uses a Google image-generation model to create product images (say 10 million products × 3 images = 30 million generations per month). At an assumed price of $0.04 per image, that is about $1.2M/month, which exceeds the budget. How do they reduce cost without cutting the feature? ⚠ verify (prices are illustrative, not current list prices)
 
-A. Switch to a self-hosted open-source image model, because it is free.  
-B. Always generate only 1 image per product instead of 3.  
-C. Mix stock photos, a third-party image model and Google's model for different image types.  
-D. Tier generation by product value (3 images for new arrivals and bestsellers, 1 for the long tail), use a lower-cost model variant where quality allows, avoid regenerating unchanged products, and negotiate committed pricing with Google.
+- A. Switch to a self-hosted open-source image model, because it is free.
+- B. Always generate only 1 image per product instead of 3.
+- C. Tier generation by product value (3 images for new arrivals and bestsellers, 1 for the long tail), use a lower-cost model variant where quality allows, avoid regenerating unchanged products, and negotiate committed pricing with Google.
+- D. Mix stock photos, a third-party image model and Google's model for different image types.
 
-**Answer: D.** It cuts volume where it matters least, lowers unit price, and keeps quality where it earns revenue:
+**Answer: C.** It cuts volume where it matters least, lowers unit price, and keeps quality where it earns revenue:
 - Tier by value: spend generations on products that drive revenue
 - Use a cheaper model tier (or lower resolution) for low-value images, after a quality check with HITL review
 - Cache and skip regeneration for unchanged products
@@ -1125,8 +1125,8 @@ D. Tier generation by product value (3 images for new arrivals and bestsellers, 
 
 Why others wrong:
 - A: "Free" is wrong: self-hosting needs GPUs/TPUs, engineering and operations, and quality may be lower.
-- B: A blanket cut removes the feature value for the products that benefit most from multiple images; D reduces volume selectively.
-- C: Mixing multiple vendors adds complexity, licensing and data-handling concerns, and does not clearly reduce cost.
+- B: A blanket cut removes the feature value for the products that benefit most from multiple images; C reduces volume selectively.
+- D: Mixing multiple vendors adds complexity, licensing and data-handling concerns, and does not clearly reduce cost.
 
 ---
 
@@ -1134,12 +1134,12 @@ Why others wrong:
 
 (Hypothetical numbers for illustration.) Altostrat's single Dedicated Interconnect (10 Gbps) fails (fibre cut), so the on-prem ingestion pipeline cannot reach Cloud Storage over it. A backup Cloud VPN exists whose usable throughput is about 3 Gbps. The on-prem site normally ingests close to the full 10 Gbps. How should they respond, and how should they have designed it?
 
-A. Wait for the Interconnect repair (4-hour ETA); ingestion is blocked.  
-B. Fail over to the Cloud VPN immediately; on-prem throttles and prioritises ingestion to fit about 3 Gbps (roughly 30 % of normal), queues the rest locally, and drains the queue after recovery. Long term, add redundant Interconnect attachments and more HA VPN tunnels.  
-C. Batch the queued data and compress it lossily so it fits the VPN; ship the rest via Transfer Appliance as a backup.  
-D. Use Storage Transfer Service for the failover, because it is designed for real-time failover.
+- A. Wait for the Interconnect repair (4-hour ETA); ingestion is blocked.
+- B. Batch the queued data and compress it lossily so it fits the VPN; ship the rest via Transfer Appliance as a backup.
+- C. Use Storage Transfer Service for the failover, because it is designed for real-time failover.
+- D. Fail over to the Cloud VPN immediately; on-prem throttles and prioritises ingestion to fit about 3 Gbps (roughly 30 % of normal), queues the rest locally, and drains the queue after recovery. Long term, add redundant Interconnect attachments and more HA VPN tunnels.
 
-**Answer: B.** Degraded service beats an outage, and the design should avoid a single point of failure. **B** is the pragmatic approach:
+**Answer: D.** Degraded service beats an outage, and the design should avoid a single point of failure. **D** is the pragmatic approach:
 - Fail over to Cloud VPN (pre-configured failover route via Cloud Router, with BGP)
 - Prioritise time-sensitive content; queue older content locally and ingest it when the Interconnect recovers
 - Long term: redundant Dedicated Interconnect attachments in separate edge availability domains/locations for the production SLA; HA VPN throughput scales by adding tunnels (each tunnel has a per-tunnel bandwidth limit)
@@ -1147,8 +1147,8 @@ D. Use Storage Transfer Service for the failover, because it is designed for rea
 
 Why others wrong:
 - A: Waiting leaves content stuck on-prem and risks missing time-sensitive content.
-- C: Lossy compression is unacceptable for media masters; Transfer Appliance is for bulk offline migration, not failover (shipping takes days).
-- D: Storage Transfer Service moves data in bulk or on a schedule; it is not a network failover mechanism and still needs a working network path.
+- B: Lossy compression is unacceptable for media masters; Transfer Appliance is for bulk offline migration, not failover (shipping takes days).
+- C: Storage Transfer Service moves data in bulk or on a schedule; it is not a network failover mechanism and still needs a working network path.
 
 ---
 

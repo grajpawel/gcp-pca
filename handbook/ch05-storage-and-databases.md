@@ -579,66 +579,77 @@ Unstructured files? → Cloud Storage
 ## Practice scenarios
 
 **Q1: EHR Healthcare—Compliance Archive**  
+
 EHR Healthcare must keep patient records for 7 years (HIPAA) in immutable archive, accessible for audit. Records are rarely accessed. Staff accidentally deleted a bucket policy once. Which approach ensures immutability?
-- A) Cloud Storage Archive class with lifecycle rule deleting after 7 years.
-- B) Cloud Storage Archive class + **Bucket Lock** + retention policy 7 years.
+- A) Cloud Storage Archive class + **Bucket Lock** + retention policy 7 years.
+- B) Cloud Storage Archive class with lifecycle rule deleting after 7 years.
 - C) Persistent Disk snapshots stored in Archive, encrypted with Cloud KMS.
 - D) BigQuery table with column-level security and 7-year retention.
 
-**Answer:** B  
+**Answer:** A  
+
 **Why:** Bucket Lock makes retention policy immutable; cannot be removed. Archive class + retention policy alone leaves room for admin override. Disk snapshots are not a WORM archive and cannot enforce retention locks. BigQuery is analytics, not a compliance archive.
 
 ---
 
 **Q2: Cymbal Retail—Real-Time Recommendations**  
+
 Cymbal Retail wants sub-millisecond latency product-recommendation counters (user viewed product X → increment counter). Cloud SQL read replicas are 10–20 ms away. Which service?
 - A) BigQuery with real-time SQL inserts.
-- B) Bigtable with row-key `hash(user_id)#timestamp`.
-- C) **Memorystore (Redis)** with pub/sub for event-driven increments.
+- B) **Memorystore (Redis)** with pub/sub for event-driven increments.
+- C) Bigtable with row-key `hash(user_id)#timestamp`.
 - D) Firestore with Cloud Pub/Sub triggers.
 
-**Answer:** C  
+**Answer:** B  
+
 **Why:** Memorystore Redis gives sub-millisecond latency for counter increments (INCR command). Bigtable is single-digit ms (not sub-ms) and overkill for simple counters. Firestore adds network/service round-trip latency. BigQuery is analytics, not a sub-ms serving store.
 
 ---
 
 **Q3: KnightMotives—Global Vehicle Inventory**  
+
 KnightMotives plants in Tokyo, Frankfurt, São Paulo must instantly see and update global inventory (paint colors, parts). Write consistency across plants critical. Must support 500+ writes/sec. Which database?
 - A) Cloud SQL with read replicas in each region (manual failover).
-- B) **Spanner multi-region** (global strong consistency, strong ACID, 99.999 % SLA).
-- C) Bigtable multi-cluster with row-key `region#part_id#timestamp`.
-- D) AlloyDB (PostgreSQL-compatible, EU region only).
+- B) Bigtable multi-cluster with row-key `region#part_id#timestamp`.
+- C) AlloyDB (PostgreSQL-compatible, EU region only).
+- D) **Spanner multi-region** (global strong consistency, strong ACID, 99.999 % SLA).
 
-**Answer:** B  
+**Answer:** D  
+
 **Why:** Spanner gives global strong consistency with horizontal write scaling + 99.999 % SLA. Cloud SQL replicas are async and read-only (stale reads, single write region). Bigtable multi-cluster replication is eventually consistent (inventory mismatch risk) and has no multi-row ACID. AlloyDB has a single-region primary.
 
 ---
 
 **Q4: Altostrat Media—Cold Media Archive**  
+
 Altostrat stores 500 TB of video/audio in Cloud Storage. Newly uploaded objects are accessed heavily by editors, but access patterns afterwards are unpredictable: some old objects are suddenly popular again while most go cold. Cost is critical and the team wants no tuning effort. Which strategy?
 - A) Store all in Standard class; use signed URLs to serve.
-- B) **Autoclass**: objects move to colder classes automatically as they go unaccessed and return to Standard when read again.
-- C) Manually transition to Coldline after 30 days, Archive after 90 days.
+- B) Manually transition to Coldline after 30 days, Archive after 90 days.
+- C) **Autoclass**: objects move to colder classes automatically as they go unaccessed and return to Standard when read again.
 - D) Store in Archive class immediately; upgrade to Standard on-demand when accessed.
 
-**Answer:** B  
-**Why:** Autoclass handles unpredictable access without manual tuning and without retrieval or early-deletion fees on its transitions. Static age-based lifecycle rules (C) would push objects that become popular again into expensive retrieval charges. Archive-first (D) incurs high retrieval fees and 365-day minimum charges. All-Standard (A) is the most expensive for cold data. (If access patterns were known and predictable, age-based lifecycle rules would also be a valid answer.)
+**Answer:** C  
+
+**Why:** Autoclass handles unpredictable access without manual tuning and without retrieval or early-deletion fees on its transitions. Static age-based lifecycle rules (B) would push objects that become popular again into expensive retrieval charges. Archive-first (D) incurs high retrieval fees and 365-day minimum charges. All-Standard (A) is the most expensive for cold data. (If access patterns were known and predictable, age-based lifecycle rules would also be a valid answer.)
 
 ---
 
 **Q5: EHR Healthcare—HA for Patient Records**  
+
 EHR patient database must have 99.95 % SLA and survive one-zone failure with <3 min failover. Currently using Cloud SQL MySQL single-zone. Which HA upgrade?
 - A) Add Cloud SQL read replica in another zone (manual promotion).
-- B) **Cloud SQL HA configuration** (primary + standby in a different zone, automatic failover, typically about a minute).
-- C) Migrate to Spanner (overkill, higher cost).
-- D) Use Bigtable + JDBC connector (not recommended, different model).
+- B) Migrate to Spanner (overkill, higher cost).
+- C) Use Bigtable + JDBC connector (not recommended, different model).
+- D) **Cloud SQL HA configuration** (primary + standby in a different zone, automatic failover, typically about a minute).
 
-**Answer:** B  
+**Answer:** D  
+
 **Why:** Cloud SQL HA gives automatic failover, 99.95 % SLA (Enterprise edition; Enterprise Plus gives 99.99 %), synchronous replication. Read replicas require manual promotion (misses SLA). Spanner is excessive for single-region OLTP. Bigtable is not relational (EHR schema mismatch).
 
 ---
 
 **Q6: Altostrat + Cymbal—ML Feature Serving**  
+
 Both case studies want to serve ML features (user embeddings, product vectors) at single-digit-millisecond latency to Agent Platform Endpoints. Features are computed in BigQuery. Which architecture?
 - A) Query BigQuery directly from Agent Platform Endpoint (features in model config).
 - B) **Export features to AlloyDB or Cloud SQL + Memorystore cache layer** (low-latency online lookups, sub-ms cache hits).
@@ -646,30 +657,35 @@ Both case studies want to serve ML features (user embeddings, product vectors) a
 - D) Store features in Cloud Storage Archive and load on demand.
 
 **Answer:** B  
+
 **Why:** Online serving needs an operational, low-latency store (Memorystore cache in front of AlloyDB/Cloud SQL; Bigtable or the managed Feature Store online store would also fit). BigQuery is an analytical warehouse with seconds-level query latency, so it is too slow per request (A). Reading object files per request (C) or Archive objects (D) adds far too much latency and is not designed for key lookups.
 
 ---
 
 **Q7: KnightMotives—IoT Telematics at Scale**  
+
 Every vehicle sends GPS, engine and battery telemetry (about 1 million vehicles, each sending one reading per second, so roughly 1M writes/sec sustained). Query: "avg speed last hour by region". 7-year compliance retention. Which database + storage?
-- A) Cloud SQL with partitions by region (billions of rows scale limit).
-- B) **Bigtable for ingestion (multi-cluster HA) + BigQuery for analytics** (row-key = `vehicle_id#reversed_timestamp`, Cloud Storage Archive for cold exports).
+- A) **Bigtable for ingestion (multi-cluster HA) + BigQuery for analytics** (row-key = `vehicle_id#reversed_timestamp`, Cloud Storage Archive for cold exports).
+- B) Cloud SQL with partitions by region (billions of rows scale limit).
 - C) Firestore collections per region (scale, eventual consistency).
 - D) AlloyDB columnar engine (PostgreSQL, region-based limits).
 
-**Answer:** B  
+**Answer:** A  
+
 **Why:** Bigtable scales linearly to very high write throughput; a row key leading with the high-cardinality vehicle ID spreads load (a key starting with region or a timestamp would hotspot). BigQuery columnar speeds analytics (avg by region). 7-year compliance → Archive storage. Cloud SQL / Firestore / AlloyDB scale limits or consistency issues.
 
 ---
 
 **Q8: Design Decision – Filestore Regional for EHR**  
+
 EHR wants to run Kubernetes ML workload on GKE that processes patient records stored in a shared filesystem. Which Filestore tier and why?
-- A) **Filestore Regional (HA)** — synchronous cross-zone replication, 99.99 % SLA, survives a zone outage for business continuity.
-- B) Filestore Zonal — cheaper, single zone, acceptable for non-critical jobs.
-- C) NetApp Volumes — enterprise SnapMirror replication (overkill unless custom policies needed).
+- A) Filestore Zonal — cheaper, single zone, acceptable for non-critical jobs.
+- B) NetApp Volumes — enterprise SnapMirror replication (overkill unless custom policies needed).
+- C) **Filestore Regional (HA)** — synchronous cross-zone replication, 99.99 % SLA, survives a zone outage for business continuity.
 - D) Persistent Disk regional snapshot — not a shared filesystem, not suitable for concurrent GKE access.
 
-**Answer:** A  
+**Answer:** C  
+
 **Why:** EHR compliance demands HA; Regional Filestore tolerates a zone failure. Zonal (99.9 %) is riskier for this requirement. Standard Persistent Disk is not a shared POSIX filesystem for many pods (ReadWriteOnce). NetApp is premium, not needed without SnapMirror policy.
 
 ---

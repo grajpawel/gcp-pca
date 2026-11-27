@@ -304,14 +304,14 @@ Do you know your resource needs in advance?
 
 **Question:** A fintech startup is training a 70B-parameter LLM for fraud detection on a single A3 Ultra VM (8 H200 GPUs). Training is slow at 42% GPU utilization; profiling shows the GPUs are idle waiting on the input pipeline (reading training shards and writing checkpoints from Cloud Storage). Budget is tight. Which change has the highest ROI?
 
-A) Add more H200 GPUs to the same cluster (A3 Ultra, 16 H200s).
-B) Rewrite the training stack for TPUs (Trillium) and use DWS Flex Start.
-C) Reduce batch size by half to increase gradient frequency.
-D) Move data to Managed Lustre (or enable Cloud Storage FUSE caching) and overlap I/O with compute.
+- A) Move data to Managed Lustre (or enable Cloud Storage FUSE caching) and overlap I/O with compute.
+- B) Add more H200 GPUs to the same cluster (A3 Ultra, 16 H200s).
+- C) Rewrite the training stack for TPUs (Trillium) and use DWS Flex Start.
+- D) Reduce batch size by half to increase gradient frequency.
 
-**Answer:** D
+**Answer:** A
 
-**Why D is correct:** The stated bottleneck is I/O, not interconnect: a high-throughput parallel file system (Managed Lustre) or Cloud Storage FUSE with file caching and parallel downloads keeps GPUs fed and speeds checkpointing, which raises utilization without buying hardware. A adds cost without fixing the idle time; B is a costly rewrite aimed at the wrong bottleneck; C worsens utilization.
+**Why A is correct:** The stated bottleneck is I/O, not interconnect: a high-throughput parallel file system (Managed Lustre) or Cloud Storage FUSE with file caching and parallel downloads keeps GPUs fed and speeds checkpointing, which raises utilization without buying hardware. B adds cost without fixing the idle time; C is a costly rewrite aimed at the wrong bottleneck; D worsens utilization.
 
 ---
 
@@ -319,10 +319,10 @@ D) Move data to Managed Lustre (or enable Cloud Storage FUSE caching) and overla
 
 **Question:** An e-commerce platform serves real-time product recommendations through the Gemini API (Flash tier). Traffic has a high, predictable daytime baseline with sharp short peaks above it, and a quiet night. On Standard pay-as-you-go they see occasional 429/throttling and latency variance at peaks. Which approach best keeps the latency SLA while controlling cost?
 
-A) Switch to Cloud Run with a GPU (scale to 0) and self-host an open model; accept cold starts.
-B) Buy Provisioned Throughput sized for the predictable baseline and let pay-as-you-go absorb the peaks above it.
-C) Move to GKE + Kueue, queuing requests; the latency SLA becomes "within 2 s".
-D) Move all traffic to Gemini batch inference.
+- A) Switch to Cloud Run with a GPU (scale to 0) and self-host an open model; accept cold starts.
+- B) Buy Provisioned Throughput sized for the predictable baseline and let pay-as-you-go absorb the peaks above it.
+- C) Move to GKE + Kueue, queuing requests; the latency SLA becomes "within 2 s".
+- D) Move all traffic to Gemini batch inference.
 
 **Answer:** B
 
@@ -334,14 +334,14 @@ D) Move all traffic to Gemini batch inference.
 
 **Question:** A pharmaceutical company trains a proprietary drug-interaction model in europe-west4 (GDPR). Data: 50 TB, stored in a Cloud Storage bucket in the same region. Training runs for 2 weeks on a multi-host accelerator cluster in that region, and GPUs/TPUs are underused while waiting on data and checkpoints. Which architecture minimizes regulatory risk and training time?
 
-A) Stream from Cloud Storage directly with no caching or tuning.
-B) Use Managed Lustre in the same region as the parallel file system (import data from the bucket, write checkpoints to it); keep everything in-region.
-C) Copy data to local SSD on each host; train offline.
-D) Use Dataflow to preprocess data to Bigtable; train from Bigtable.
+- A) Stream from Cloud Storage directly with no caching or tuning.
+- B) Copy data to local SSD on each host; train offline.
+- C) Use Managed Lustre in the same region as the parallel file system (import data from the bucket, write checkpoints to it); keep everything in-region.
+- D) Use Dataflow to preprocess data to Bigtable; train from Bigtable.
 
-**Answer:** B
+**Answer:** C
 
-**Why B is correct:** Managed Lustre is the recommended parallel file system for AI training and checkpointing, giving high sustained throughput and low latency from a regional service, and keeping the data in the EU region satisfies residency (confirm accelerator availability in the chosen EU region). Cloud Storage FUSE with caching is a reasonable lighter-weight option but A, as stated (no caching/tuning), is the weakest; C (local SSD) is ephemeral and risks losing data on node failure; D (Bigtable) is not a training-data format store and adds complexity.
+**Why C is correct:** Managed Lustre is the recommended parallel file system for AI training and checkpointing, giving high sustained throughput and low latency from a regional service, and keeping the data in the EU region satisfies residency (confirm accelerator availability in the chosen EU region). Cloud Storage FUSE with caching is a reasonable lighter-weight option but A, as stated (no caching/tuning), is the weakest; B (local SSD) is ephemeral and risks losing data on node failure; D (Bigtable) is not a training-data format store and adds complexity.
 
 ---
 
@@ -349,14 +349,14 @@ D) Use Dataflow to preprocess data to Bigtable; train from Bigtable.
 
 **Question:** A research lab runs 5–10 training jobs weekly (duration: 6–48 hrs each, random schedule). Current setup: GKE cluster, 16 × L4 GPU node pool, reserved capacity. Observed: average utilization 30%. Goal: reduce cost without sacrificing job SLA. Should they adopt Kueue + DWS Flex Start?
 
-A) Yes; Kueue enables job prioritization and preemption, reducing wasted capacity.
-B) Yes; DWS Flex Start lets jobs wait for capacity, avoiding idle reservation cost.
-C) No; the overhead of Kueue job scheduling is not worth it for 5–10 jobs.
-D) No; switch to spot VMs instead.
+- A) Yes, but keep the reserved 16 × L4 pool and add Kueue only to prioritize and preempt jobs inside it.
+- B) No; the overhead of Kueue job scheduling is not worth it for 5–10 jobs.
+- C) No; switch to spot VMs instead.
+- D) Yes; DWS Flex Start lets jobs wait for capacity, avoiding idle reservation cost.
 
-**Answer:** B (or A+B together)
+**Answer:** D
 
-**Why B is correct:** DWS Flex Start (with Kueue/ProvisioningRequest on GKE) provisions capacity for the job and releases it afterwards; the lab pays only while jobs run, at a discount, rather than for idle reserved capacity. The trade-off is waiting for capacity, acceptable for jobs without hard start times (and each request can run up to 7 days, enough for 6-48 h jobs). At 30% utilization, holding reserved capacity is waste. Kueue adds value (prioritization, fair-share). C underestimates the savings. D (Spot) is cheap but can be preempted mid-job; Flex Start capacity is not preempted once running ⚠ verify.
+**Why D is correct:** DWS Flex Start (with Kueue/ProvisioningRequest on GKE) provisions capacity for the job and releases it afterwards; the lab pays only while jobs run, at a discount, rather than for idle reserved capacity. The trade-off is waiting for capacity, acceptable for jobs without hard start times (and each request can run up to 7 days, enough for 6-48 h jobs). At 30% utilization, holding reserved capacity is waste. Kueue adds value (prioritization, fair-share) but A keeps paying for the idle reservation, so it doesn't fix the cost problem. B underestimates the savings. C (Spot) is cheap but can be preempted mid-job; Flex Start capacity is not preempted once running ⚠ verify.
 
 ---
 
@@ -364,14 +364,14 @@ D) No; switch to spot VMs instead.
 
 **Question:** Altostrat Media is deploying a Gemini Pro-tier model to summarize podcasts. CTO requires (a) auditability of every summary decision, (b) redaction of PII (guest names, email) from logs, (c) cost per summary tracked. Architect's recommendation?
 
-A) Call Gemini through Agent Platform; enable Cloud Audit Logs, log requests/responses to BigQuery with Sensitive Data Protection de-identification applied, and use labels + billing export for cost.
-B) Use Cloud Run + custom Gemini API calls; log to BigQuery with DLP masking.
-C) Use Agent Studio (GUI) for all summarization; audit trail via console.
-D) Use Firestore + Pub/Sub + Cloud Run; manual audit log per request.
+- A) Use Cloud Run + custom Gemini API calls; log to BigQuery with DLP masking.
+- B) Call Gemini through Agent Platform; enable Cloud Audit Logs, log requests/responses to BigQuery with Sensitive Data Protection de-identification applied, and use labels + billing export for cost.
+- C) Use Agent Studio (GUI) for all summarization; audit trail via console.
+- D) Use Firestore + Pub/Sub + Cloud Run; manual audit log per request.
 
-**Answer:** A (B is also workable)
+**Answer:** B (A is also workable)
 
-**Why A is correct:** Cloud Audit Logs record who called the API (admin/data-access events, if enabled), but they do not capture prompt or response content, and Sensitive Data Protection is not applied automatically; you must log the content you need to BigQuery yourself and de-identify it with SDP. Cost per summary is derived from billing export plus labels or per-request token metadata. B is valid too (more custom code); C is a prototyping tool, not a production audit design; D is over-engineered.
+**Why B is correct:** Cloud Audit Logs record who called the API (admin/data-access events, if enabled), but they do not capture prompt or response content, and Sensitive Data Protection is not applied automatically; you must log the content you need to BigQuery yourself and de-identify it with SDP. Cost per summary is derived from billing export plus labels or per-request token metadata. A is valid too (more custom code); C is a prototyping tool, not a production audit design; D is over-engineered.
 
 ---
 
@@ -379,14 +379,14 @@ D) Use Firestore + Pub/Sub + Cloud Run; manual audit log per request.
 
 **Question:** KnightMotives self-hosts several LLMs and LoRA-tuned variants (sales, service, inventory assistants) on a single GKE cluster using vLLM on GPU nodes. Combined peak load is high and requests vary a lot in length. Which architecture best improves latency and GPU utilization?
 
-A) Three Agent Platform endpoints (one per model); client SDK routes by model type.
-B) GKE Inference Gateway in front of the model-server pods, using model-aware and load-aware routing.
-C) Cloud Run (3 services, one per model); Cloud Load Balancer routes by path.
-D) A single Kubernetes ClusterIP Service with round-robin load balancing.
+- A) Three Agent Platform endpoints (one per model); client SDK routes by model type.
+- B) Cloud Run (3 services, one per model); Cloud Load Balancer routes by path.
+- C) A single Kubernetes ClusterIP Service with round-robin load balancing.
+- D) GKE Inference Gateway in front of the model-server pods, using model-aware and load-aware routing.
 
-**Answer:** B
+**Answer:** D
 
-**Why B is correct:** GKE Inference Gateway extends the Gateway API with inference-specific routing: it routes by model/LoRA adapter name and by backend load (queue depth, KV-cache utilization), and supports request prioritization, which improves tail latency and GPU utilization versus plain round-robin (D). A moves the workloads off the cluster and scales cost per endpoint; C adds cold starts and per-service overhead for GPU LLM serving. ⚠ verify exact feature list.
+**Why D is correct:** GKE Inference Gateway extends the Gateway API with inference-specific routing: it routes by model/LoRA adapter name and by backend load (queue depth, KV-cache utilization), and supports request prioritization, which improves tail latency and GPU utilization versus plain round-robin (C). A moves the workloads off the cluster and scales cost per endpoint; B adds cold starts and per-service overhead for GPU LLM serving. ⚠ verify exact feature list.
 
 ---
 
@@ -394,29 +394,29 @@ D) A single Kubernetes ClusterIP Service with round-robin load balancing.
 
 **Question:** An ML ops engineer notices that a GKE cluster (32 × L4 GPU node pool) running inference has GPU utilization 15% but high latency (p99 > 500 ms). Which first step best uses Gemini Cloud Assist?
 
-A) Run the NVIDIA profiler on every GPU kernel before looking at anything else.
-B) Start a Gemini Cloud Assist Investigation scoped to the cluster/workload so it correlates metrics (CPU throttling, evictions), Pod logs and recent configuration changes, then validate its hypotheses.
-C) Manually review all Kubernetes logs line by line for OOM errors.
-D) Increase replica count immediately.
+- A) Start a Gemini Cloud Assist Investigation scoped to the cluster/workload so it correlates metrics (CPU throttling, evictions), Pod logs and recent configuration changes, then validate its hypotheses.
+- B) Run the NVIDIA profiler on every GPU kernel before looking at anything else.
+- C) Manually review all Kubernetes logs line by line for OOM errors.
+- D) Increase replica count immediately.
 
-**Answer:** B
+**Answer:** A
 
-**Why B is correct:** Cloud Assist Investigations gather logs, metrics and configuration and test several hypotheses in parallel, which is an efficient first pass when the symptom (low GPU utilization with high latency) points away from the GPU, for example toward CPU-bound pre/post-processing, throttling or evictions. You still verify the findings. A (profiling) is a later step if the GPU turns out to be the bottleneck; C is slow; D adds cost and may not help if each Pod is CPU-bound.
+**Why A is correct:** Cloud Assist Investigations gather logs, metrics and configuration and test several hypotheses in parallel, which is an efficient first pass when the symptom (low GPU utilization with high latency) points away from the GPU, for example toward CPU-bound pre/post-processing, throttling or evictions. You still verify the findings. B (profiling) is a later step if the GPU turns out to be the bottleneck; C is slow; D adds cost and may not help if each Pod is CPU-bound.
 
 ---
 
 ### Scenario 8: EU AI Act and model governance
 
-**Question:** KnightMotives deploys an AI system in the EU that the team has classified as high-risk under the AI Act (for example, an AI model used to score driver risk for fleet insurance; note that vehicle-safety AI is largely governed through sectoral type-approval law). High-risk systems require logging, human oversight and documentation. Which GCP architecture supports this for a model-update/decision workflow?
+**Question:** KnightMotives deploys an AI system in the EU that the team has classified as high-risk under the AI Act (for example, an AI model used to score driver risk for fleet insurance; note that vehicle-safety AI is largely governed through sectoral type-approval law). High-risk systems require logging, human oversight and documentation. Which GCP architecture supports this for a model-update/decision workflow with the least custom code and built-in lineage?
 
-A) Agent Platform + Cloud Run functions for user approval workflows; Firestore for decision audit trail.
-B) Agent Platform Pipelines + BigQuery + Cloud Audit Logs; manual approval step before deployment or decision release.
-C) Cloud Run + Firestore + Pub/Sub; custom approval UI + audit logs to BigQuery.
-D) Agent Platform Endpoints (batch) + Cloud Composer workflow; approval task in workflow.
+- A) Agent Platform + Cloud Run functions for user approval workflows; Firestore for decision audit trail.
+- B) Cloud Run + Firestore + Pub/Sub; custom approval UI + audit logs to BigQuery.
+- C) Agent Platform Pipelines + BigQuery + Cloud Audit Logs; manual approval step before deployment or decision release.
+- D) Agent Platform Endpoints (batch) + Cloud Composer workflow; approval task in workflow.
 
-**Answer:** B (A, C and D are also workable)
+**Answer:** C
 
-**Why B is correct:** Pipelines orchestrate the workflow with lineage/metadata, BigQuery stores inputs/outputs for traceability, and Cloud Audit Logs record who approved or rejected. A human-approval gate can be added to a pipeline or surrounding workflow (exact pause/approve mechanism ⚠ verify). A and C are valid but more custom; D works with an orchestrator but is not more integrated. Dates and scope of AI Act obligations have been revised, so check current timelines ⚠ verify.
+**Why C is correct:** Pipelines orchestrate the workflow with lineage/metadata, BigQuery stores inputs/outputs for traceability, and Cloud Audit Logs record who approved or rejected. A human-approval gate can be added to a pipeline or surrounding workflow (exact pause/approve mechanism ⚠ verify). A and B need custom approval and audit-trail code and have no built-in lineage; D adds an orchestrator and uses batch endpoints, which is not more integrated. Dates and scope of AI Act obligations have been revised, so check current timelines ⚠ verify.
 
 ---
 

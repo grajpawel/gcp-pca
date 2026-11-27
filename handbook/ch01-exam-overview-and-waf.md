@@ -360,10 +360,10 @@ Adjust up if you have limited GCP hands-on experience; reduce if you have 2+ yea
 
 Altostrat Media's podcast transcription service runs on Cloud Run. During breaking news (10x traffic spike), transcription latency increases from 5s to 50s, causing timeouts. The team wants minimal operational changes. Which approach is best?
 
-A. Manually scale Cloud Run replicas to 1000 max instances; adjust based on monitoring.
-B. Set Cloud Run max instances to 1000 and add a CPU utilization threshold for autoscaling.
-C. Migrate to GKE with HPA (Horizontal Pod Autoscaler) for finer control.
-D. Decouple with Pub/Sub: the API enqueues each transcription job and returns immediately; a Cloud Run worker service consumes the queue and writes results back (async processing).
+- A. Manually scale Cloud Run replicas to 1000 max instances; adjust based on monitoring.
+- B. Set Cloud Run max instances to 1000 and add a CPU utilization threshold for autoscaling.
+- C. Migrate to GKE with HPA (Horizontal Pod Autoscaler) for finer control.
+- D. Decouple with Pub/Sub: the API enqueues each transcription job and returns immediately; a Cloud Run worker service consumes the queue and writes results back (async processing).
 
 **Answer:** D
 
@@ -375,14 +375,14 @@ D. Decouple with Pub/Sub: the API enqueues each transcription job and returns im
 
 EHR Healthcare must migrate MySQL databases to GCP with HIPAA compliance. They require encryption at rest and in transit, audit logging of all access, and external key management (keys never leave their HSM). Which configuration meets these requirements with minimal operational overhead?
 
-A. Cloud SQL with Google-managed encryption keys (default); enable Cloud Audit Logs.
-B. Cloud SQL with CMEK (Cloud KMS software mode); enable Cloud Audit Logs.
-C. Cloud SQL with CMEK backed by Cloud EKM (External Key Manager) keys held in their own HSM; enable Cloud Audit Logs (including Data Access logs).
-D. Compute Engine + self-managed MySQL with customer-provided HSM.
+- A. Cloud SQL with CMEK backed by Cloud EKM (External Key Manager) keys held in their own HSM; enable Cloud Audit Logs (including Data Access logs).
+- B. Cloud SQL with Google-managed encryption keys (default); enable Cloud Audit Logs.
+- C. Cloud SQL with CMEK (Cloud KMS software mode); enable Cloud Audit Logs.
+- D. Compute Engine + self-managed MySQL with customer-provided HSM.
 
-**Answer:** C
+**Answer:** A
 
-**Why:** The deciding requirement is "keys never leave their HSM", which is what Cloud EKM provides (EKM is a key protection level alongside software and HSM; it is used instead of, not on top of, Cloud HSM keys). HIPAA itself does not mandate CMEK: Google-managed encryption at rest and TLS in transit are on by default and Google signs a BAA. A and B do not meet the external-key requirement; D meets it but at high operational overhead. Cloud Audit Logs covers the access-audit requirement.
+**Why:** The deciding requirement is "keys never leave their HSM", which is what Cloud EKM provides (EKM is a key protection level alongside software and HSM; it is used instead of, not on top of, Cloud HSM keys). HIPAA itself does not mandate CMEK: Google-managed encryption at rest and TLS in transit are on by default and Google signs a BAA. B and C do not meet the external-key requirement; D meets it but at high operational overhead. Cloud Audit Logs covers the access-audit requirement.
 
 ---
 
@@ -390,10 +390,10 @@ D. Compute Engine + self-managed MySQL with customer-provided HSM.
 
 KnightMotives has a legacy mainframe on-prem and wants to migrate gradually to GCP. They need >= 99.9% availability for the hybrid link, ~5 Gbps (burst to 10), and data must never route over the internet. Which setup is best?
 
-A. Cloud VPN with HA configuration (2 tunnels).
-B. Dedicated Interconnect (10 Gbps) with one circuit.
-C. Dedicated Interconnect with two 10 Gbps circuits in different edge availability domains of the same metro.
-D. Partner Interconnect (50 Mbps) + Cloud VPN as primary.
+- A. Cloud VPN with HA configuration (2 tunnels).
+- B. Dedicated Interconnect (10 Gbps) with one circuit.
+- C. Dedicated Interconnect with two 10 Gbps circuits in different edge availability domains of the same metro.
+- D. Partner Interconnect (50 Mbps) + Cloud VPN as primary.
 
 **Answer:** C
 
@@ -405,14 +405,14 @@ D. Partner Interconnect (50 Mbps) + Cloud VPN as primary.
 
 Cymbal Retail runs product-recommendation models on Agent Platform Endpoints. 60% of traffic is predictable (business hours); 40% is spiky (off-hours, promotions). Model serving latency must stay <100 ms. They want to optimize cost. Which approach is best?
 
-A. Use a single online Endpoint with a fixed number of replicas sized for peak load.
-B. Use Batch Endpoints for all predictions (async, cheaper).
-C. Use an online Endpoint with autoscaling (min replicas for the predictable baseline, scale out for spikes); use Spot capacity only for training jobs.
-D. Split: on-demand Endpoint for business hours, Spot Endpoint for off-hours; failover via traffic split.
+- A. Use a single online Endpoint with a fixed number of replicas sized for peak load.
+- B. Use an online Endpoint with autoscaling (min replicas for the predictable baseline, scale out for spikes); use Spot capacity only for training jobs.
+- C. Use Batch Endpoints for all predictions (async, cheaper).
+- D. Split: on-demand Endpoint for business hours, Spot Endpoint for off-hours; failover via traffic split.
 
-**Answer:** C
+**Answer:** B
 
-**Why:** Autoscaling matches capacity to the spiky 40 % while the baseline replicas (which can be covered by committed use discounts) serve the predictable 60 %, and keeps latency under the target. A pays for peak capacity around the clock. B cannot meet an interactive <100 ms latency target. D puts latency-sensitive serving on preemptible capacity during the spiky period, which risks eviction at exactly the wrong time. Provisioned Throughput is a Gemini (generative model) consumption option, not a setting for custom-model Endpoints.
+**Why:** Autoscaling matches capacity to the spiky 40 % while the baseline replicas (which can be covered by committed use discounts) serve the predictable 60 %, and keeps latency under the target. A pays for peak capacity around the clock. C cannot meet an interactive <100 ms latency target. D puts latency-sensitive serving on preemptible capacity during the spiky period, which risks eviction at exactly the wrong time. Provisioned Throughput is a Gemini (generative model) consumption option, not a setting for custom-model Endpoints.
 
 ---
 
@@ -420,14 +420,14 @@ D. Split: on-demand Endpoint for business hours, Spot Endpoint for off-hours; fa
 
 Your team must build "similar product" recommendations for a catalog of 5M items using their text descriptions and images. You want to generate embeddings, find nearest neighbours, and serve results in <50 ms with minimal ML operations. Which platform is best?
 
-A. BigQuery ML (CREATE MODEL) + BigQuery ML.PREDICT() at serving time.
-B. Agent Platform (Custom Training with TensorFlow) + Agent Platform Endpoints.
-C. Agent Platform Model Garden (pre-trained embeddings) + Vector Search for inference.
-D. Dataflow pipeline (Spark MLlib) → Bigtable → Cloud Run for serving.
+- A. BigQuery ML (CREATE MODEL) + BigQuery ML.PREDICT() at serving time.
+- B. Agent Platform (Custom Training with TensorFlow) + Agent Platform Endpoints.
+- C. Dataflow pipeline (Spark MLlib) → Bigtable → Cloud Run for serving.
+- D. Agent Platform Model Garden (pre-trained embeddings) + Vector Search for inference.
 
-**Answer:** C
+**Answer:** D
 
-**Why:** Model Garden provides pre-trained (multimodal) embedding models, so no custom training is needed. Vector Search is a managed approximate-nearest-neighbour index built for low-latency lookups at this scale. Lowest operational overhead and fastest to deploy. A is batch-oriented and not a low-latency serving path; B requires building and operating a custom model; D is a self-built stack. (A collaborative-filtering model trained on user-item interactions would be a different problem, pointing to custom training such as a two-tower model.)
+**Why:** Model Garden provides pre-trained (multimodal) embedding models, so no custom training is needed. Vector Search is a managed approximate-nearest-neighbour index built for low-latency lookups at this scale. Lowest operational overhead and fastest to deploy. A is batch-oriented and not a low-latency serving path; B requires building and operating a custom model; C is a self-built stack. (A collaborative-filtering model trained on user-item interactions would be a different problem, pointing to custom training such as a two-tower model.)
 
 ---
 
@@ -435,14 +435,14 @@ D. Dataflow pipeline (Spark MLlib) → Bigtable → Cloud Run for serving.
 
 Your bank (GDPR-regulated) must store EU customer data exclusively in europe-west1 (Belgium). You want to allow authorised engineers in the US to query the data but prevent any data exfiltration outside the approved boundary. Which approach is best?
 
-A. Store data in europe-west1 Cloud Storage; use firewall rules to block non-EU IPs.
-B. Store data in europe-west1 BigQuery; use Cloud IAM to grant US engineers a query role; no further controls.
-C. Store data in europe-west1; use the Organization Policy resource-locations constraint to restrict where resources can be created, plus a VPC Service Controls perimeter around the project with access levels for the authorised engineers.
-D. Migrate data to Spanner multi-region EU, use Spanner IAM roles to grant US engineers read access.
+- A. Store data in europe-west1 Cloud Storage; use firewall rules to block non-EU IPs.
+- B. Store data in europe-west1; use the Organization Policy resource-locations constraint to restrict where resources can be created, plus a VPC Service Controls perimeter around the project with access levels for the authorised engineers.
+- C. Store data in europe-west1 BigQuery; use Cloud IAM to grant US engineers a query role; no further controls.
+- D. Migrate data to Spanner multi-region EU, use Spanner IAM roles to grant US engineers read access.
 
-**Answer:** C
+**Answer:** B
 
-**Why:** The Organization Policy resource-locations constraint enforces that resources are created only in the allowed location (a data-residency control). A VPC Service Controls perimeter with access levels allows controlled access while blocking data exfiltration through Google APIs. This is the defense-in-depth approach: policy + access control + perimeter. A firewall cannot constrain Google API access (and does not govern where data is stored), B relies on IAM alone, and D does not by itself restrict location or exfiltration. Note that residency (where data is stored) is not the same as controlling where it is viewed from; US engineers viewing the data may still need legal review.
+**Why:** The Organization Policy resource-locations constraint enforces that resources are created only in the allowed location (a data-residency control). A VPC Service Controls perimeter with access levels allows controlled access while blocking data exfiltration through Google APIs. This is the defense-in-depth approach: policy + access control + perimeter. A firewall cannot constrain Google API access (and does not govern where data is stored), C relies on IAM alone, and D does not by itself restrict location or exfiltration. Note that residency (where data is stored) is not the same as controlling where it is viewed from; US engineers viewing the data may still need legal review.
 
 ---
 
@@ -450,14 +450,14 @@ D. Migrate data to Spanner multi-region EU, use Spanner IAM roles to grant US en
 
 Your team runs microservices on GKE with Pub/Sub, Dataflow, and Agent Platform ML pipelines. You need to correlate end-to-end latency (user request → service → message → pipeline → prediction). Which observability stack is best?
 
-A. Cloud Monitoring (metrics only) + basic GKE logs.
-B. Cloud Monitoring + Cloud Logging + Cloud Trace (distributed tracing).
-C. Prometheus + Grafana (open-source, deployed in GKE).
-D. Cloud Logging + custom dashboards in Looker.
+- A. Cloud Monitoring + Cloud Logging + Cloud Trace (distributed tracing).
+- B. Cloud Monitoring (metrics only) + basic GKE logs.
+- C. Prometheus + Grafana (open-source, deployed in GKE).
+- D. Cloud Logging + custom dashboards in Looker.
 
-**Answer:** B
+**Answer:** A
 
-**Why:** Cloud Trace is purpose-built for distributed tracing across services; with OpenTelemetry instrumentation and trace-context propagation (including through Pub/Sub message attributes) it correlates a request end to end. Cloud Monitoring shows metrics; Cloud Logging shows logs; Trace connects the latency path. A lacks tracing, C adds self-managed operational burden, and D cannot attribute latency across hops.
+**Why:** Cloud Trace is purpose-built for distributed tracing across services; with OpenTelemetry instrumentation and trace-context propagation (including through Pub/Sub message attributes) it correlates a request end to end. Cloud Monitoring shows metrics; Cloud Logging shows logs; Trace connects the latency path. B lacks tracing, C adds self-managed operational burden, and D cannot attribute latency across hops.
 
 ---
 
@@ -465,14 +465,14 @@ D. Cloud Logging + custom dashboards in Looker.
 
 Altostrat Media uses a Gemini model (via Agent Studio) to summarize podcasts. The system must: (1) never log full podcast content in logs (PII/sensitive data), (2) ensure predictions are auditable (model version, user, when), (3) support human review before publishing. Which setup is best?
 
-A. Agent Studio → Gemini API → Cloud Logging (standard); rely on Sensitive Data Protection (DLP) to redact logs.
-B. Agent Studio → Agent Platform Endpoints → Sensitive Data Protection on prompt input; Cloud Audit Logs for model calls; manual review UI before publishing.
-C. Gemini API → custom logging (only store result hashes); audit via Cloud Audit Logs.
-D. Migrate to fine-tuned open-source model (LLaMA) on Agent Platform to avoid Gemini's black-box nature.
+- A. Agent Studio → Gemini API → Cloud Logging (standard); rely on Sensitive Data Protection (DLP) to redact logs.
+- B. Gemini API → custom logging (only store result hashes); audit via Cloud Audit Logs.
+- C. Agent Studio → Agent Platform Endpoints → Sensitive Data Protection on prompt input; Cloud Audit Logs for model calls; manual review UI before publishing.
+- D. Migrate to fine-tuned open-source model (LLaMA) on Agent Platform to avoid Gemini's black-box nature.
 
-**Answer:** B
+**Answer:** C
 
-**Why:** Calling Gemini through Agent Platform keeps access under IAM and Cloud Audit Logs (who called the model, when, from where), Sensitive Data Protection can de-identify PII in prompts and logs before they are stored, and a manual review step (custom UI) gates publishing. Pin an explicit model version so outputs are reproducible and auditable. This is the AI governance pattern. A relies on redacting after the fact, C stores hashes only (no meaningful audit of content), and D swaps models without addressing the actual requirements.
+**Why:** Calling Gemini through Agent Platform keeps access under IAM and Cloud Audit Logs (who called the model, when, from where), Sensitive Data Protection can de-identify PII in prompts and logs before they are stored, and a manual review step (custom UI) gates publishing. Pin an explicit model version so outputs are reproducible and auditable. This is the AI governance pattern. A relies on redacting after the fact, B stores hashes only (no meaningful audit of content), and D swaps models without addressing the actual requirements.
 
 ## Sources
 
