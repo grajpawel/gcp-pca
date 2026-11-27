@@ -560,86 +560,93 @@ Never hardcode credentials in code or environment variables.
 ## Practice scenarios
 
 **Scenario 1: Service Account Key Leak**
+
 Your Compute Engine VM has a service account key stored in `/var/secrets/key.json`. A developer accidentally commits the key to a public GitHub repository. What should you do immediately?
 
-A) Delete the key file from the VM; problem solved.
-B) Disable or delete the key on the service account (Console/gcloud), then audit Cloud Audit Logs for unauthorized use; afterwards move the VM to an attached service account (no key).
-C) Rotate the key on the VM.
-D) Notify GitHub to remove the file from history.
+- A) Delete the key file from the VM; problem solved.
+- B) Rotate the key on the VM.
+- C) Notify GitHub to remove the file from history.
+- D) Disable or delete the key on the service account (Console/gcloud), then audit Cloud Audit Logs for unauthorized use; afterwards move the VM to an attached service account (no key).
 
-**Correct:** B. Disable/delete the exposed key first (stop immediate bleeding; deleting the key invalidates it). Then audit logs to determine if it was used maliciously. A is incomplete (key on GitHub still valid). C only creates a new key; unless the old key is deleted it stays valid. D helps but doesn't prevent unauthorized use.
+**Correct:** D. Disable/delete the exposed key first (stop immediate bleeding; deleting the key invalidates it). Then audit logs to determine if it was used maliciously. A is incomplete (key on GitHub still valid). B only creates a new key; unless the old key is deleted it stays valid. C helps but doesn't prevent unauthorized use.
 
 ---
 
 **Scenario 2: Conditional Access for Finance Data**
+
 Finance team needs BigQuery read access to a sensitive dataset, but only during business hours (9 AM–5 PM US/Eastern) and from the office network (10.0.0.0/8). How do you configure this with least privilege?
 
-A) Grant the Finance group `roles/bigquery.dataViewer` on the dataset (plus `roles/bigquery.jobUser`) with an IAM Condition: a time condition (`request.time.getHours(...)`/day-of-week) combined with an Access Context Manager access level for the office network (`request.matchAccessLevels`).
-B) Grant the role to the Finance group without conditions; use a bastion VM to control network access.
-C) Grant Finance group `roles/bigquery.dataEditor`; use Context-Aware Access to enforce MFA.
-D) Use Organization Policy to restrict BigQuery access by IP only.
+- A) Grant the role to the Finance group without conditions; use a bastion VM to control network access.
+- B) Grant Finance group `roles/bigquery.dataEditor`; use Context-Aware Access to enforce MFA.
+- C) Grant the Finance group `roles/bigquery.dataViewer` on the dataset (plus `roles/bigquery.jobUser`) with an IAM Condition: a time condition (`request.time.getHours(...)`/day-of-week) combined with an Access Context Manager access level for the office network (`request.matchAccessLevels`).
+- D) Use Organization Policy to restrict BigQuery access by IP only.
 
-**Correct:** A. IAM Conditions support time-based attributes, and network/device context via access levels (IAM has no raw `origin.ip` attribute). Predefined viewer role provides least privilege (not Editor). B doesn't enforce time; C is too broad (dataEditor allows updates, not just read). D (Org Policy) is not an access-control mechanism for principals by IP.
+**Correct:** C. IAM Conditions support time-based attributes, and network/device context via access levels (IAM has no raw `origin.ip` attribute). Predefined viewer role provides least privilege (not Editor). A doesn't enforce time; B is too broad (dataEditor allows updates, not just read). D (Org Policy) is not an access-control mechanism for principals by IP.
 
 ---
 
 **Scenario 3: Multi-Cloud App Identity**
+
 Your Node.js app runs on AWS EC2 and calls GCP BigQuery. You want to avoid storing a GCP service account key on EC2. What's the best approach?
 
-A) Generate a GCP service account key, store it in AWS Secrets Manager.
-B) Use Workload Identity Federation: create a workload identity pool with an AWS provider in GCP, and grant the EC2 instance's AWS IAM role (as a federated principal, or via impersonation of a GCP service account) access to BigQuery.
-C) Use VPN to connect EC2 to GCP; attach a GCP service account to a GKE pod and grant the EC2 app access via Shared VPC.
-D) Set up Cloud Directory Sync to sync AWS users to Cloud Identity.
+- A) Generate a GCP service account key, store it in AWS Secrets Manager.
+- B) Use Workload Identity Federation: create a workload identity pool with an AWS provider in GCP, and grant the EC2 instance's AWS IAM role (as a federated principal, or via impersonation of a GCP service account) access to BigQuery.
+- C) Use VPN to connect EC2 to GCP; attach a GCP service account to a GKE pod and grant the EC2 app access via Shared VPC.
+- D) Set up Cloud Directory Sync to sync AWS users to Cloud Identity.
 
 **Correct:** B. WIF is designed for cross-cloud scenarios. The workload presents its AWS credentials, which Google STS exchanges for short-lived GCP tokens (the AWS provider type is built in; no OIDC issuer needed). A stores a GCP key outside GCP (liability). C requires GKE (unnecessary for this scenario) and Shared VPC does not grant API identity. D is for user identity, not service-to-service.
 
 ---
 
 **Scenario 4: Organization Policy Constraint**
+
 Your org must comply with GDPR (EU data residency). You need to ensure all Cloud Storage buckets are created in EU regions only. Which organization policy constraint should you use?
 
-A) `storage.uniformBucketLevelAccess`
-B) `gcp.resourceLocations` list constraint allowing `in:eu-locations`
-C) `compute.skipDefaultNetworkCreation`
-D) IAM deny policy on project owners.
+- A) `gcp.resourceLocations` list constraint allowing `in:eu-locations`
+- B) `storage.uniformBucketLevelAccess`
+- C) `compute.skipDefaultNetworkCreation`
+- D) IAM deny policy on project owners.
 
-**Correct:** B. The resource location restriction (`gcp.resourceLocations`) is the standard organization policy for data residency. A (uniform bucket-level access) is unrelated to location. C (default VPC creation) is unrelated. D (deny policy) doesn't enforce location; it only blocks permissions for principals.
+**Correct:** A. The resource location restriction (`gcp.resourceLocations`) is the standard organization policy for data residency. B (uniform bucket-level access) is unrelated to location. C (default VPC creation) is unrelated. D (deny policy) doesn't enforce location; it only blocks permissions for principals.
 
 ---
 
 **Scenario 5: Service Account for Autonomous Agents**
+
 You're deploying an AI agent (using Agent Platform) that processes customer orders and writes results to BigQuery. The agent should not access any other tables, projects, or external APIs. How do you configure its identity?
 
-A) Attach a single service account with `roles/bigquery.editor` on the entire project.
-B) Create a dedicated service account for the agent; grant it write access (e.g., `roles/bigquery.dataEditor`, or a custom role with `bigquery.tables.updateData`) only on the target table/dataset, plus `roles/bigquery.jobUser` if it runs jobs. Optionally add a Principal Access Boundary so the agent's project's service accounts can only reach the intended project(s).
-C) Create two service accounts: one for orders, one for writes; grant different roles.
-D) Use Cloud Identity to create a user for the agent.
+- A) Attach a single service account with `roles/bigquery.editor` on the entire project.
+- B) Create two service accounts: one for orders, one for writes; grant different roles.
+- C) Create a dedicated service account for the agent; grant it write access (e.g., `roles/bigquery.dataEditor`, or a custom role with `bigquery.tables.updateData`) only on the target table/dataset, plus `roles/bigquery.jobUser` if it runs jobs. Optionally add a Principal Access Boundary so the agent's project's service accounts can only reach the intended project(s).
+- D) Use Cloud Identity to create a user for the agent.
 
-**Correct:** B. A dedicated service account with resource-level grants gives least privilege; PAB adds an outer boundary at project/folder/org level (it cannot restrict to a single table). A is too broad (editor on whole project). C is over-engineered for this requirement. D (Cloud Identity) is for human users, not agents.
+**Correct:** C. A dedicated service account with resource-level grants gives least privilege; PAB adds an outer boundary at project/folder/org level (it cannot restrict to a single table). A is too broad (editor on whole project). B is over-engineered for this requirement. D (Cloud Identity) is for human users, not agents.
 
 ---
 
 **Scenario 6: Auditing IAM Changes**
+
 Your compliance team must prove that only SREs can approve IAM changes to production projects. Which tools should you use?
 
-A) Organization Policy `iam.disableServiceAccountCreation`.
-B) IAM role `roles/iam.roleAdmin`; grant only to SRE group.
-C) Cloud Audit Logs (Admin Activity) + access control via custom IAM roles or deny policies; audit trail shows who made changes.
-D) Workload Identity Federation to external SRE IdP.
+- A) Organization Policy `iam.disableServiceAccountCreation`.
+- B) Cloud Audit Logs (Admin Activity) + access control via custom IAM roles or deny policies; audit trail shows who made changes.
+- C) IAM role `roles/iam.roleAdmin`; grant only to SRE group.
+- D) Workload Identity Federation to external SRE IdP.
 
-**Correct:** C. Cloud Audit Logs show the audit trail (who, what, when); custom roles + deny policies enforce that only SREs can make changes. B alone doesn't create an audit trail. A prevents new SAs (too restrictive). D is for authentication, not authorization.
+**Correct:** B. Cloud Audit Logs show the audit trail (who, what, when); custom roles + deny policies enforce that only SREs can make changes. C alone doesn't create an audit trail. A prevents new SAs (too restrictive). D is for authentication, not authorization.
 
 ---
 
 **Scenario 7: Temporary Access for Contractor**
+
 A contractor needs to debug a GKE cluster in your staging environment for 5 days. You want to grant temporary access, with justification required and automatic expiration. What's the best approach?
 
-A) Add contractor to a "staging-readers" group; grant the group `roles/container.viewer`.
-B) Use Privileged Access Manager (PAM): create an entitlement with `roles/container.viewer` (or developer role if debugging needs it), maximum duration of 5 days, justification required (and approval if desired). PAM enforces the time limit and logs the request.
-C) Create a service account for the contractor; share the key via email.
-D) Grant contractor direct IAM role on the project with an IAM Condition (time-based).
+- A) Add contractor to a "staging-readers" group; grant the group `roles/container.viewer`.
+- B) Create a service account for the contractor; share the key via email.
+- C) Grant contractor direct IAM role on the project with an IAM Condition (time-based).
+- D) Use Privileged Access Manager (PAM): create an entitlement with `roles/container.viewer` (or developer role if debugging needs it), maximum duration of 5 days, justification required (and approval if desired). PAM enforces the time limit and logs the request.
 
-**Correct:** B. PAM is designed for temporary, justified privilege elevation. It auto-expires and has full audit trail. A doesn't provide time-limit or justification. C shares credentials (security risk). D works for expiry but lacks PAM's justification/approval workflow and request audit trail. (PAM entitlements allow a maximum grant duration of 7 days; longer needs are re-requested.)
+**Correct:** D. PAM is designed for temporary, justified privilege elevation. It auto-expires and has full audit trail. A doesn't provide time-limit or justification. B shares credentials (security risk). C works for expiry but lacks PAM's justification/approval workflow and request audit trail. (PAM entitlements allow a maximum grant duration of 7 days; longer needs are re-requested.)
 
 
 ## Sources

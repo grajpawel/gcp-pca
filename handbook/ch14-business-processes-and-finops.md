@@ -228,10 +228,10 @@ How long can we commit resources?
 
 **Scenario 1:** Your healthcare SaaS (HIPAA) has 200 customers on GCP, but adoption of new features (patient portal) is only 30 % at month 4. Finance asks: "Should we add premium support or fix the platform?" Which is the correct next step?
 
-A) Add Premium support tier immediately (15-minute P1 response, high recurring cost).  
-B) Conduct customer health-score analysis (API latency, feature usage, support tickets) to identify adoption blockers (training, data quality, workflow fit).  
-C) Reduce costs by 20% to cut prices and increase adoption.  
-D) Switch to Spot VMs to save compute cost.
+- A) Add Premium support tier immediately (15-minute P1 response, high recurring cost).
+- B) Conduct customer health-score analysis (API latency, feature usage, support tickets) to identify adoption blockers (training, data quality, workflow fit).
+- C) Reduce costs by 20% to cut prices and increase adoption.
+- D) Switch to Spot VMs to save compute cost.
 
 **Answer:** B. Adoption at 30 % suggests a capability issue (tech/training), not a support-response-time issue. Premium support doesn't fix broken features or poor UX. Diagnose first (health scores, customer interviews), then fix (update docs, demo, workflow). C and D are cost reductions that don't address adoption.
 
@@ -239,43 +239,43 @@ D) Switch to Spot VMs to save compute cost.
 
 **Scenario 2:** Your team migrated a 2-tier web app to GKE Autopilot. Baseline load is 10 QPS; peak is 50 QPS (2h per day). You're on standard on-demand pricing ($200/month baseline). Finance says: "Lock in a 1-year CUD to cut costs by 40 %." Is this a safe decision?
 
-A) Yes; save $80/month, guaranteed.  
-B) Only partly; commit to the steady baseline spend (a spend-based / flexible CUD sized at or below the minimum hourly spend), not the peak, and check the real discount rate first.  
-C) Yes; 1-year CUD on Kubernetes is zero-risk.  
-D) No; GKE Autopilot scales to zero, so a commitment is always wasted.
+- A) Yes; save $80/month, guaranteed.
+- B) Yes; 1-year CUD on Kubernetes is zero-risk.
+- C) No; GKE Autopilot scales to zero, so a commitment is always wasted.
+- D) Only partly; commit to the steady baseline spend (a spend-based / flexible CUD sized at or below the minimum hourly spend), not the peak, and check the real discount rate first.
 
-**Answer:** B. A CUD is a commitment to an hourly spend that you pay whether or not you use it; the saving only materialises on the portion of usage that stays above the commitment. The quoted 40 % is not a documented 1-year rate (compute flexible CUDs are about 28 % for 1 year on most series), so "guaranteed $80" is wrong (A). C ignores the stranded-spend risk if demand drops or you leave the platform. D is wrong because Autopilot does not scale a workload "to zero" by itself and compute CUDs can cover Autopilot pods; the point is sizing, not never committing. Peaks (2 h/day) stay on-demand, or Spot if tolerant.
+**Answer:** D. A CUD is a commitment to an hourly spend that you pay whether or not you use it; the saving only materialises on the portion of usage that stays above the commitment. The quoted 40 % is not a documented 1-year rate (compute flexible CUDs are about 28 % for 1 year on most series), so "guaranteed $80" is wrong (A). B ignores the stranded-spend risk if demand drops or you leave the platform. C is wrong because Autopilot does not scale a workload "to zero" by itself and compute CUDs can cover Autopilot pods; the point is sizing, not never committing. Peaks (2 h/day) stay on-demand, or Spot if tolerant.
 
 ---
 
-**Scenario 3:** You're launching a new feature (image-quality grading for product photos). Options: (a) Hire 2 ML engineers, train custom model (3 months, $200k labor, on-prem GPUs); (b) Use a managed multimodal API (Gemini or Vision API) + validation workflow (4 weeks, $10k setup, $2k/month for 10k images/day). Your business needs the feature in 6 weeks. Which is the best decision?
+**Scenario 3:** You're launching a new feature (image-quality grading for product photos). Options: (a) Hire 2 ML engineers, train custom model (3 months, $200k labor, on-prem GPUs); (b) Use a managed multimodal API (Gemini or Vision API) + validation workflow (4 weeks, $10k setup, $2k/month for 10k images/day). Volume is forecast to stay at about 10k images/day for at least the next year, and the business needs the feature in 6 weeks. Which is the best decision?
 
-A) Option (a); full control, lower long-term cost.  
-B) Option (b); time-to-market critical; managed API is cheaper + faster.  
-C) Split: use API for MVP (6 weeks), plan custom model for month 6+.  
-D) Option (a); CapEx depreciation is cheaper than OpEx long-term.
+- A) Option (a); full control, lower long-term cost.
+- B) Split: use API for MVP (6 weeks), plan custom model for month 6+.
+- C) Option (b); time-to-market critical; managed API is cheaper + faster.
+- D) Option (a); CapEx depreciation is cheaper than OpEx long-term.
 
-**Answer:** C is best (pragmatic), B is correct in isolation. The scenario states "6 weeks needed," which rules out (a) (3 months). API is faster + cheaper upfront. If demand scales beyond API cost-efficiency (1M+ images/month), then custom model + training rig becomes ROI-positive; that's the hybrid approach (C). Pure B ignores long-term cost optimization. D is wrong because the timeline doesn't support (a).
+**Answer:** C. The scenario needs the feature in 6 weeks, which rules out (a) (3 months). The managed API is faster and far cheaper upfront (about $10k setup plus $2k/month versus $200k of labor), and with flat volume there is no demand growth that would make a custom model pay back. B commits to a custom-model plan that nothing in the stem justifies; it would only make sense if volume were forecast to grow by orders of magnitude (for example 1M+ images/month). A and D pick (a), which misses the deadline.
 
 ---
 
 **Scenario 4:** Your org has 5 teams on GCP, each with separate projects. Monthly spend is $50k total, but breakdown per team is unknown—you pay one invoice, then argue internally. Finance needs a cost-allocation report by end of month. Quickest fix?
 
-A) Export billing data to BigQuery; query by project; send report.  
-B) Ask each team to estimate their spend (manual, error-prone).  
-C) Create labels (env, team, app) on all new resources; export billing data to BigQuery; query by labels; backfill old resources with labels over 2 weeks.  
-D) Deploy a custom dashboard using Looker (6 weeks dev).
+- A) Export billing data to BigQuery; query by project; send report.
+- B) Ask each team to estimate their spend (manual, error-prone).
+- C) Create labels (env, team, app) on all new resources; export billing data to BigQuery; query by labels; backfill old resources with labels over 2 weeks.
+- D) Deploy a custom dashboard using Looker (6 weeks dev).
 
-**Answer:** A is fastest short-term: since each team already has its own project, Cloud Billing reports (console) can group by project immediately, and BigQuery billing export gives project-level data from the day you enable it (it is not retroactive, so enable it now). C is best practice (sustainable, enables team-level cost governance); labels only apply to usage from the time they are set, so "backfill" does not change past invoices. B is unreliable. D is over-engineered. Exam likely wants A or C; C is "right way," A is "fast way." If the question emphasizes "quick," A; if "accurate ongoing," C.
+**Answer:** A. It is the quickest fix: since each team already has its own project, Cloud Billing reports (console) can group by project immediately, and BigQuery billing export gives project-level data from the day you enable it (it is not retroactive, so enable it now). C is the better long-term practice (sustainable, enables team-level cost governance) but is not the quickest: labels only apply to usage from the time they are set, so "backfill" does not change past invoices, and the stem asks for the quickest fix. B is unreliable. D is over-engineered.
 
 ---
 
 **Scenario 5:** Your production GKE cluster is on-demand ($30k/month). Recommender flags 40 % of nodes as underutilized. Your CTO says: "Cut costs immediately; use Spot VMs." What's the risk?
 
-A) No risk; Spot is always safe for Kubernetes.  
-B) Spot VMs can be preempted at any time with only about 30 seconds' notice; if pods aren't stateless + reschedulable, you lose traffic.  
-C) Spot is only for batch jobs, not production.  
-D) Spot breaks PersistentVolumes.
+- A) No risk; Spot is always safe for Kubernetes.
+- B) Spot VMs can be preempted at any time with only about 30 seconds' notice; if pods aren't stateless + reschedulable, you lose traffic.
+- C) Spot is only for batch jobs, not production.
+- D) Spot breaks PersistentVolumes.
 
 **Answer:** B. Spot is appropriate for stateless workloads (web tier, replicated services) with fast rescheduling. If your GKE cluster has stateful pods (databases, cache, long-running processes) without eviction handlers, Spot will cause outages. Better approach: first rightsize the 40 % idle nodes (Recommender, GKE autoscaling), then use Spot node pools for the stateless web tier + on-demand (with CUDs for the baseline) for the data tier. A is too permissive; C is too restrictive (Spot works for production if workload is fault-tolerant); D is false (PVs survive eviction, but pod data-loss is the issue).
 
@@ -283,34 +283,34 @@ D) Spot breaks PersistentVolumes.
 
 **Scenario 6:** Your company is acquiring a smaller SaaS competitor that runs on Azure. You're tasked with migrating 500 customers to GCP within 6 months to consolidate infrastructure. Board asks: "What's the TCO impact?" Which analysis is most credible?
 
-A) "GCP is 30 % cheaper per VM; savings = 30 %."  
-B) Run Migration Center assessment (Azure VMs → GCP equivalents); project 5-year TCO (CapEx + OpEx + migration labor + training + support); include cost of licensing (BYOL/SQL Server on GCP).  
-C) "OpEx model is flexible; we'll save money by scaling down."  
-D) "Spot VMs save 90 %; we'll use them for customer workloads."
+- A) "GCP is 30 % cheaper per VM; savings = 30 %."
+- B) "OpEx model is flexible; we'll save money by scaling down."
+- C) "Spot VMs save 90 %; we'll use them for customer workloads."
+- D) Run Migration Center assessment (Azure VMs → GCP equivalents); project 5-year TCO (CapEx + OpEx + migration labor + training + support); include cost of licensing (BYOL/SQL Server on GCP).
 
-**Answer:** B. TCO must include all costs: current state (Azure CapEx if any, OpEx, support); migration (labor, tools, downtime, testing); new state (GCP infrastructure, licensing, support, training). Migration Center automates much of this. A is oversimplified; C is aspirational (flexibility ≠ savings unless you actually downsize); D is risky (Spot for customer-facing not safe).
+**Answer:** D. TCO must include all costs: current state (Azure CapEx if any, OpEx, support); migration (labor, tools, downtime, testing); new state (GCP infrastructure, licensing, support, training). Migration Center automates much of this. A is oversimplified; B is aspirational (flexibility ≠ savings unless you actually downsize); C is risky (Spot for customer-facing not safe).
 
 ---
 
 **Scenario 7:** Your team implemented a 3-year resource-based CUD for 100 vCPUs on GCP. Month 2, business pivots: new strategy requires only 40 vCPUs. You're locked into 100 vCPUs at committed price. What's the least painful way forward?
 
-A) Cancel the CUD in the console to stop paying for the unused 60 vCPUs.  
-B) Keep the CUD and move other eligible workloads (same region and machine family, other projects in the billing account via CUD sharing) onto the committed capacity so it is used.  
-C) Accept the waste; budget it as business-strategy cost.  
-D) Next time, size commitments to the demand floor and prefer a shorter term or a compute flexible (spend-based) CUD instead of a 3-year resource-based CUD.
+- A) Cancel the CUD in the console to stop paying for the unused 60 vCPUs.
+- B) Accept the waste; budget it as business-strategy cost.
+- C) Keep the CUD and move other eligible workloads (same region and machine family, other projects in the billing account via CUD sharing) onto the committed capacity so it is used.
+- D) Next time, size commitments to the demand floor and prefer a shorter term or a compute flexible (spend-based) CUD instead of a 3-year resource-based CUD.
 
-**Answer:** B (with D as the lesson). Commitments are not cancellable: you pay for the term whether or not you use the resources, so A is wrong (there is no cancel option or fee schedule). The least painful path is to absorb the excess with other workloads that match the commitment (resource-based CUDs apply by region and machine family; CUD sharing across projects in the billing account is a setting), or if that is impossible, accept the cost (C) and learn from it (D). The exam tests that 3-year resource-based CUDs are high-risk if demand is uncertain; flexible (spend-based) CUDs and shorter terms reduce the risk but are still commitments.
+**Answer:** C (with D as the lesson). Commitments are not cancellable: you pay for the term whether or not you use the resources, so A is wrong (there is no cancel option or fee schedule). The least painful path is to absorb the excess with other workloads that match the commitment (resource-based CUDs apply by region and machine family; CUD sharing across projects in the billing account is a setting), or if that is impossible, accept the cost (B) and learn from it (D). The exam tests that 3-year resource-based CUDs are high-risk if demand is uncertain; flexible (spend-based) CUDs and shorter terms reduce the risk but are still commitments.
 
 ---
 
 **Scenario 8:** A new customer wants to join your platform (financial services, $100k ARR at year 1). Compliance requires VPC Service Controls, CMEK, and dedicated support. Salesforce says: "Customer expects $1k/month all-inclusive, while your costed estimate for the compliant setup is about $5k/month." Finance says: "Build them a custom SKU; we'll lose the customer otherwise." What's your architecture decision?
 
-A) Agree to $1k/month; absorb the difference.  
-B) Explain cost reality: break down the cost drivers (CMEK key and operations overhead, dedicated infrastructure and support, engineering effort for VPC-SC perimeters) against the price; negotiate scope (e.g., shared-tenant architecture where compliance allows, tiered support) rather than absorb the gap.  
-C) Route customer to a managed-service partner (cheaper labor cost; margin for you).  
-D) Offer a limited-time $1k/month trial; renegotiate at month 6.
+- A) Explain cost reality: break down the cost drivers (CMEK key and operations overhead, dedicated infrastructure and support, engineering effort for VPC-SC perimeters) against the price; negotiate scope (e.g., shared-tenant architecture where compliance allows, tiered support) rather than absorb the gap.
+- B) Agree to $1k/month; absorb the difference.
+- C) Route customer to a managed-service partner (cheaper labor cost; margin for you).
+- D) Offer a limited-time $1k/month trial; renegotiate at month 6.
 
-**Answer:** B. The exam tests **trade-off analysis**: compliance requirements (CMEK, VPC-SC) are non-negotiable constraints, so you can't simply drop them to win a customer (VPC-SC itself has no usage charge; the cost is design and operations effort). What you can do: negotiate scope (shared-tenant architecture where compliance allows, tiered support until ARR grows). C is valid if you partner with integrators. D creates bad precedent (customer expects $1k/month forever). Exam wants B: understand costs, find creative compromises (architecture efficiency, shared resources, tiered support).
+**Answer:** A. The exam tests **trade-off analysis**: compliance requirements (CMEK, VPC-SC) are non-negotiable constraints, so you can't simply drop them to win a customer (VPC-SC itself has no usage charge; the cost is design and operations effort). What you can do: negotiate scope (shared-tenant architecture where compliance allows, tiered support until ARR grows). C is valid if you partner with integrators. D creates bad precedent (customer expects $1k/month forever). Exam wants A: understand costs, find creative compromises (architecture efficiency, shared resources, tiered support).
 
 ## Sources
 

@@ -531,16 +531,16 @@ A healthcare SaaS startup stores patient records in Cloud SQL. New HIPAA audit r
 
 Which solution best meets all requirements?
 
-A) Enable Cloud SQL default encryption (Google-managed), add org-policy constraint to limit access.
-B) Create a Cloud KMS key (software protection level) with automatic rotation policy; create CMEK-enabled Cloud SQL instance pointing to that key; enable Audit Logs for key usage.
-C) Export Cloud SQL data monthly, encrypt locally with customer's RSA key, re-import.
-D) Use CSEK (Cloud Storage snapshots) with manual key supply per backup.
+- A) Create a Cloud KMS key (software protection level) with automatic rotation policy; create CMEK-enabled Cloud SQL instance pointing to that key; enable Audit Logs for key usage.
+- B) Enable Cloud SQL default encryption (Google-managed), add org-policy constraint to limit access.
+- C) Export Cloud SQL data monthly, encrypt locally with customer's RSA key, re-import.
+- D) Use CSEK (Cloud Storage snapshots) with manual key supply per backup.
 
-**Answer: B**
+**Answer: A**
 
-**Why correct:** CMEK (option B) gives customer control of keys (requirement 1). Cloud KMS Cloud Audit Logs (Data Access logs enabled) record key usage (requirement 2). A rotation schedule of 90 days = quarterly (requirement 3). The key's destroy-scheduled duration can be set to 30 days (requirement 4; it is also the default). Note: if the requirement were instead that even Google cannot access key material, you would need Cloud EKM (plus Key Access Justifications), not a software key.
+**Why correct:** CMEK (option A) gives customer control of keys (requirement 1). Cloud KMS Cloud Audit Logs (Data Access logs enabled) record key usage (requirement 2). A rotation schedule of 90 days = quarterly (requirement 3). The key's destroy-scheduled duration can be set to 30 days (requirement 4; it is also the default). Note: if the requirement were instead that even Google cannot access key material, you would need Cloud EKM (plus Key Access Justifications), not a software key.
 
-**Why others wrong:** A) Google-managed encryption doesn't give customer key control; violates HIPAA audit requirement. C) Offline encryption loses benefits of managed rotation & audit trail. D) CSEK works only with Cloud Storage and Compute Engine (not Cloud SQL) and has no automatic rotation.
+**Why others wrong:** B) Google-managed encryption doesn't give customer key control; violates HIPAA audit requirement. C) Offline encryption loses benefits of managed rotation & audit trail. D) CSEK works only with Cloud Storage and Compute Engine (not Cloud SQL) and has no automatic rotation.
 
 ---
 
@@ -549,10 +549,10 @@ Altostrat's chatbot receives user queries and calls Gemini API (Agent Platform).
 
 Which control addresses this risk?
 
-A) Increase IAM role permissions so chatbot service account has read-only access to all training data.
-B) Deploy Model Armor with a template that enables the prompt injection and jailbreak filter (and the Sensitive Data Protection filter on responses), screening user prompts before they reach Gemini and responses before they return.
-C) Replace Gemini API with a simpler rule-based chatbot (no ML).
-D) Store training transcripts in Confidential GKE nodes so data is encrypted in use.
+- A) Increase IAM role permissions so chatbot service account has read-only access to all training data.
+- B) Deploy Model Armor with a template that enables the prompt injection and jailbreak filter (and the Sensitive Data Protection filter on responses), screening user prompts before they reach Gemini and responses before they return.
+- C) Replace Gemini API with a simpler rule-based chatbot (no ML).
+- D) Store training transcripts in Confidential GKE nodes so data is encrypted in use.
 
 **Answer: B**
 
@@ -567,15 +567,16 @@ A multi-tenant SaaS company runs Agent Platform and BigQuery for customer analyt
 
 Which mechanism prevents this?
 
-A) Remove the employee's BigQuery role immediately upon termination.
-B) Deploy VPC Service Controls with a perimeter around BigQuery and the project's Cloud Storage; do not add egress rules to outside projects (egress is denied by default); define an access level (IP range allowlist) for authorized engineers.
-C) Enable customer-managed encryption (CMEK) for all BigQuery datasets; log all decryption events.
-D) Implement column-level security in BigQuery so the employee only sees obfuscated data.
+- A) Remove the employee's BigQuery role immediately upon termination.
+- B) Enable customer-managed encryption (CMEK) for all BigQuery datasets; log all decryption events.
+- C) Deploy VPC Service Controls with a perimeter around BigQuery and the project's Cloud Storage; do not add egress rules to outside projects (egress is denied by default); define an access level (IP range allowlist) for authorized engineers.
+- D) Implement column-level security in BigQuery so the employee only sees obfuscated data.
 
-**Answer: B**
+**Answer: C**
 
 **Why correct:** VPC-SC operates at API level. Data cannot cross the perimeter boundary unless an ingress/egress rule allows it, so even with a valid IAM role the employee's export or copy of BigQuery data to a bucket or dataset in a project outside the perimeter is denied at the API boundary. The access level ensures that only requests from allowed networks/devices can call BigQuery from outside the perimeter. This is **defense in depth** beyond IAM.
-**Why others wrong:** A) Doesn't prevent currently-employed malicious actor. C) CMEK encrypts data; doesn't prevent authorized API calls (employee has decrypt permission if they have BigQuery reader role). D) Column-level security doesn't prevent a reader role from calling `ExportData` to external service.
+
+**Why others wrong:** A) Doesn't prevent currently-employed malicious actor. B) CMEK encrypts data; doesn't prevent authorized API calls (employee has decrypt permission if they have BigQuery reader role). D) Column-level security doesn't prevent a reader role from calling `ExportData` to external service.
 
 ---
 
@@ -586,16 +587,16 @@ Before publication, you must ensure: **no customer PII appears in public catalog
 
 Which approach is best?
 
-A) Manually review every enriched product before publishing (human-in-the-loop, no automation).
-B) Use Cloud DLP to inspect supplier data at ingestion; de-identify (mask email/phone) before passing to Gemini; re-inspect model output for PII; block if found.
-C) Store all supplier data in a VPC-SC perimeter; restrict export to internal systems only.
-D) Encrypt supplier data with CMEK; only authorized roles can decrypt.
+- A) Manually review every enriched product before publishing (human-in-the-loop, no automation).
+- B) Store all supplier data in a VPC-SC perimeter; restrict export to internal systems only.
+- C) Encrypt supplier data with CMEK; only authorized roles can decrypt.
+- D) Use Cloud DLP to inspect supplier data at ingestion; de-identify (mask email/phone) before passing to Gemini; re-inspect model output for PII; block if found.
 
-**Answer: B**
+**Answer: D**
 
 **Why correct:** Cloud DLP Inspect detects PII patterns (email, phone, SSN). De-identify before Gemini ensures model doesn't process unmasked PII. Re-inspect output (models can leak training data). Blocks high-confidence PII findings → no PII in catalog. Automated, scalable, auditable.
 
-**Why others wrong:** A) Human review is slow; doesn't scale to thousands of products daily. C) VPC-SC doesn't prevent PII in data; it controls where data flows (different problem). D) CMEK encrypts data at rest; doesn't inspect or scrub PII during processing.
+**Why others wrong:** A) Human review is slow; doesn't scale to thousands of products daily. B) VPC-SC doesn't prevent PII in data; it controls where data flows (different problem). C) CMEK encrypts data at rest; doesn't inspect or scrub PII during processing.
 
 ---
 
@@ -604,16 +605,16 @@ KnightMotives Automotive requires: *encryption keys for autonomous-driving train
 
 How do you configure CMEK?
 
-A) Use CMEK with Cloud KMS software protection level; import key from on-premises HSM into Cloud KMS.
-B) Use CSEK; supply key directly in API calls.
-C) Use Cloud EKM (External Key Manager); integrate the on-premises key manager via a private connection (Cloud Interconnect / EKM via VPC); point Cloud SQL / BigQuery CMEK to the external key.
-D) Use Confidential Computing; place training data in Confidential Space (isolated from GCP infrastructure).
+- A) Use CMEK with Cloud KMS software protection level; import key from on-premises HSM into Cloud KMS.
+- B) Use Cloud EKM (External Key Manager); integrate the on-premises key manager via a private connection (Cloud Interconnect / EKM via VPC); point Cloud SQL / BigQuery CMEK to the external key.
+- C) Use CSEK; supply key directly in API calls.
+- D) Use Confidential Computing; place training data in Confidential Space (isolated from GCP infrastructure).
 
-**Answer: C**
+**Answer: B**
 
 **Why correct:** Cloud EKM keeps the key material in a supported external key manager outside Google Cloud; Google services call it (over the internet or EKM via VPC) for wrap/unwrap operations. Meets the requirement that keys are never stored in Google Cloud. (The on-prem HSM must be exposed through a supported EKM partner/key manager.)
 
-**Why others wrong:** A) Importing into Cloud KMS means keys cross the boundary (violates requirement). B) CSEK only works for Cloud Storage and Compute Engine; it is not supported for BigQuery/Cloud SQL, and the keys are supplied per request. D) Confidential Computing protects data in use; doesn't control where encryption keys are stored.
+**Why others wrong:** A) Importing into Cloud KMS means keys cross the boundary (violates requirement). C) CSEK only works for Cloud Storage and Compute Engine; it is not supported for BigQuery/Cloud SQL, and the keys are supplied per request. D) Confidential Computing protects data in use; doesn't control where encryption keys are stored.
 
 ---
 
@@ -622,10 +623,10 @@ Your CI/CD pipeline builds container images in Cloud Build. You want: *only imag
 
 What's the full solution?
 
-A) Enable Binary Authorization on GKE; configure a policy requiring attestation(s) from your attestor (e.g., build provenance verified from Cloud Build, signed with your KMS key); the pipeline creates the attestation after each successful build.
-B) Store all image hashes in Secret Manager; before deployment, query Secret Manager to verify image is approved.
-C) Use CMEK to encrypt all images in Artifact Registry; only authorized roles can decrypt.
-D) Require all images to be scanned by Artifact Analysis (vulnerability scanning) before deployment; if no critical CVEs, allow deploy.
+- A) Enable Binary Authorization on GKE; configure a policy requiring attestation(s) from your attestor (e.g., build provenance verified from Cloud Build, signed with your KMS key); the pipeline creates the attestation after each successful build.
+- B) Store all image hashes in Secret Manager; before deployment, query Secret Manager to verify image is approved.
+- C) Use CMEK to encrypt all images in Artifact Registry; only authorized roles can decrypt.
+- D) Require all images to be scanned by Artifact Analysis (vulnerability scanning) before deployment; if no critical CVEs, allow deploy.
 
 **Answer: A**
 
@@ -640,16 +641,16 @@ Altostrat's public recommendation API gets spikes of suspicious traffic (10x nor
 
 What's the best solution?
 
-A) Deploy Compute Engine VMs behind Cloud Load Balancer (HTTP(S)), then configure firewall rules to block IPs with high request rate.
-B) Use Cloud Armor with DDoS protection enabled (automatic), add rate-limiting policy (requests per IP), add WAF rule (regex on URI path to block malformed requests); attach to HTTP(S) Load Balancer.
-C) Use Cloud VPN to isolate the API (only authorized partners can access); require authentication on every request.
-D) Use Confidential Computing for API servers; encrypt all traffic.
+- A) Deploy Compute Engine VMs behind Cloud Load Balancer (HTTP(S)), then configure firewall rules to block IPs with high request rate.
+- B) Use Cloud VPN to isolate the API (only authorized partners can access); require authentication on every request.
+- C) Use Cloud Armor with DDoS protection enabled (automatic), add rate-limiting policy (requests per IP), add WAF rule (regex on URI path to block malformed requests); attach to HTTP(S) Load Balancer.
+- D) Use Confidential Computing for API servers; encrypt all traffic.
 
-**Answer: B**
+**Answer: C**
 
 **Why correct:** Cloud Armor sits at Google's edge (drops large DDoS before reaching your network). Rate limiting per IP (built-in feature) → throttle botnets. WAF rules (regex, headers, URI patterns) → block malformed requests. Attach to HTTP(S) Load Balancer (single step).
 
-**Why others wrong:** A) Firewall + LB-level filtering happens *inside* your VPC; DDoS traffic already entered your network. Cloud Armor blocks at the edge (much earlier). C) VPN doesn't protect public API; requires handshake (not DDoS defense). D) Confidential Computing encrypts workload; doesn't help with DDoS / rate limiting.
+**Why others wrong:** A) Firewall + LB-level filtering happens *inside* your VPC; DDoS traffic already entered your network. Cloud Armor blocks at the edge (much earlier). B) VPN doesn't protect public API; requires handshake (not DDoS defense). D) Confidential Computing encrypts workload; doesn't help with DDoS / rate limiting.
 
 ---
 

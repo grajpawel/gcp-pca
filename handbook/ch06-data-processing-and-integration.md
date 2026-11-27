@@ -319,80 +319,80 @@ Data processing engines comparison:
 
 **Scenario 1:** A retail company ingests order events from 500+ physical stores (HTTPS POST) in real time. They need a recommendations ML model to score each event and fraud anomalies flagged within a few seconds, with minimal operations. Which architecture best balances latency and operational simplicity?
 
-A) Pub/Sub (with push subscriptions) → Cloud Run functions (call Agent Platform Endpoints for recommendations + fraud check) → Firestore (store latest score)
-B) Cloud Tasks (scheduled every 50 ms) → Dataflow → BigQuery
-C) Dataproc cluster (Spark Streaming) → self-managed Kafka → custom consumer application
-D) BigQuery (real-time ingestion + clustering) → SQL queries on a schedule
+- A) Cloud Tasks (scheduled every 50 ms) → Dataflow → BigQuery
+- B) Dataproc cluster (Spark Streaming) → self-managed Kafka → custom consumer application
+- C) BigQuery (real-time ingestion + clustering) → SQL queries on a schedule
+- D) Pub/Sub (with push subscriptions) → Cloud Run functions (call Agent Platform Endpoints for recommendations + fraud check) → Firestore (store latest score)
 
-**Answer: A**
-- **Why A:** Pub/Sub with push delivers events in near real time to serverless Cloud Run functions, which scale automatically and call Agent Platform Endpoints. Firestore stores the latest score for fast retrieval. No cluster overhead (serverless).
-- **Why not B:** Cloud Tasks is not a streaming ingestion mechanism; it dispatches individual deferred/rate-limited HTTP tasks. Scheduling a Dataflow job every 50 ms makes no sense.
-- **Why not C:** Dataproc requires cluster provisioning and management, and self-managed Kafka adds more ops; overkill for this use case.
-- **Why not D:** Scheduled SQL queries are batch analytics, not per-event scoring; latency is far above the requirement.
+**Answer: D**
+- **Why D:** Pub/Sub with push delivers events in near real time to serverless Cloud Run functions, which scale automatically and call Agent Platform Endpoints. Firestore stores the latest score for fast retrieval. No cluster overhead (serverless).
+- **Why not A:** Cloud Tasks is not a streaming ingestion mechanism; it dispatches individual deferred/rate-limited HTTP tasks. Scheduling a Dataflow job every 50 ms makes no sense.
+- **Why not B:** Dataproc requires cluster provisioning and management, and self-managed Kafka adds more ops; overkill for this use case.
+- **Why not C:** Scheduled SQL queries are batch analytics, not per-event scoring; latency is far above the requirement.
 
 **Scenario 2:** A healthcare org must replicate a 50 GB MySQL database (running on Cloud SQL) to BigQuery for analytics, and they need CDC (change data capture) to keep it synchronized continuously. Their data includes patient records (HIPAA). Which service and security config?
 
-A) Datastream → BigQuery with CMEK + column-level security (policy tags) or authorized views to protect PII columns
-B) Cloud SQL backup → BigQuery external table + Sensitive Data Protection scan
-C) Dataflow custom pipeline + Pub/Sub topics (one per table)
-D) MySQL replication to replica instance → BigQuery Data Transfer Service
+- A) Cloud SQL backup → BigQuery external table + Sensitive Data Protection scan
+- B) Dataflow custom pipeline + Pub/Sub topics (one per table)
+- C) Datastream → BigQuery with CMEK + column-level security (policy tags) or authorized views to protect PII columns
+- D) MySQL replication to replica instance → BigQuery Data Transfer Service
 
-**Answer: A**
-- **Why A:** Datastream is purpose-built, serverless CDC with near real-time replication into BigQuery (Cloud SQL for MySQL is a supported source). CMEK encrypts at rest. Policy tags or authorized views restrict PII columns (SSN, medical history), and audit logs record access. (Compliance also depends on a signed BAA and following Google's HIPAA guidance.)
-- **Why not B:** Backup → external table is a one-time snapshot, not continuous CDC.
-- **Why not C:** Custom Pub/Sub + Dataflow replication is complex to build and maintain (ordering, deduplication, schema changes); Datastream does this natively.
+**Answer: C**
+- **Why C:** Datastream is purpose-built, serverless CDC with near real-time replication into BigQuery (Cloud SQL for MySQL is a supported source). CMEK encrypts at rest. Policy tags or authorized views restrict PII columns (SSN, medical history), and audit logs record access. (Compliance also depends on a signed BAA and following Google's HIPAA guidance.)
+- **Why not A:** Backup → external table is a one-time snapshot, not continuous CDC.
+- **Why not B:** Custom Pub/Sub + Dataflow replication is complex to build and maintain (ordering, deduplication, schema changes); Datastream does this natively.
 - **Why not D:** A replica instance plus export is not continuous CDC into BigQuery, adds manual ops, and BigQuery Data Transfer Service does not read MySQL replicas.
 
 **Scenario 3:** A media company processes 2 TB of transcoded video metadata daily, performs NLP sentiment analysis using a custom Python library and model, generates recommended content lists, and stores results in BigQuery for dashboards. Metadata comes from Cloud Storage (batch-ingested nightly). Latency tolerance: 4 hours. Budget: minimize compute cost and operations. Which processing engine?
 
-A) Dataflow (batch, Beam) running the custom Python NLP step → write to BigQuery partitioned table
-B) BigQuery ML SQL only, with no custom code
-C) Cloud Composer + always-on Dataproc cluster (Spark ML) → GCS → BigQuery
-D) Data Fusion → BigQuery (no-code, predefined transforms only)
+- A) BigQuery ML SQL only, with no custom code
+- B) Dataflow (batch, Beam) running the custom Python NLP step → write to BigQuery partitioned table
+- C) Cloud Composer + always-on Dataproc cluster (Spark ML) → GCS → BigQuery
+- D) Data Fusion → BigQuery (no-code, predefined transforms only)
 
-**Answer: A**
-- **Why A:** Dataflow batch jobs are serverless and cost-efficient for nightly processing, autoscale horizontally for 2 TB, and can run custom Python code per element. A 4-hour latency tolerance is easily met.
-- **Why not B:** BigQuery ML can use built-in or remote models, but it cannot run an arbitrary custom Python library inside SQL; it is the better choice only if a built-in or remote (e.g., Gemini or Natural Language API) model fits the use case.
+**Answer: B**
+- **Why B:** Dataflow batch jobs are serverless and cost-efficient for nightly processing, autoscale horizontally for 2 TB, and can run custom Python code per element. B 4-hour latency tolerance is easily met.
+- **Why not A:** BigQuery ML can use built-in or remote models, but it cannot run an arbitrary custom Python library inside SQL; it is the better choice only if a built-in or remote (e.g., Gemini or Natural Language API) model fits the use case.
 - **Why not C:** Composer plus a Dataproc cluster means higher ops overhead and cost (always-on environment and cluster); an existing Spark investment is not part of the requirements.
 - **Why not D:** Data Fusion is no-code and less flexible for custom NLP logic.
 
 **Scenario 4:** An order-processing system decouples fulfillment from payment. Orders come in via REST API (thousands/sec), trigger payment processing (Stripe API), and if payment succeeds, create a fulfillment task. If payment fails, retry with exponential backoff. Which service orchestrates this?
 
-A) Pub/Sub → Cloud Run (call Stripe API) → Firestore (track state) → Retry via Cloud Tasks
-B) Workflows → Stripe API call (HTTP step) → conditional step → Firestore write → configured retry policy
-C) Cloud Scheduler (cron) → Dataflow (process batch)
-D) Eventarc → Cloud Run → BigQuery (log events)
+- A) Workflows → Stripe API call (HTTP step) → conditional step → Firestore write → configured retry policy
+- B) Pub/Sub → Cloud Run (call Stripe API) → Firestore (track state) → Retry via Cloud Tasks
+- C) Cloud Scheduler (cron) → Dataflow (process batch)
+- D) Eventarc → Cloud Run → BigQuery (log events)
 
-**Answer: B**
-- **Why B:** Workflows is designed for orchestrating HTTP/API calls and Google Cloud services: HTTP steps (no container needed to call Stripe), conditional logic, and retry policies with exponential backoff. It keeps execution state per order. YAML or JSON definition.
-- **Why not A:** Could work, but Pub/Sub + Cloud Tasks + Firestore means hand-built state management and retry logic; error-prone compared with a managed orchestrator.
+**Answer: A**
+- **Why A:** Workflows is designed for orchestrating HTTP/API calls and Google Cloud services: HTTP steps (no container needed to call Stripe), conditional logic, and retry policies with exponential backoff. It keeps execution state per order. YAML or JSON definition.
+- **Why not B:** Could work, but Pub/Sub + Cloud Tasks + Firestore means hand-built state management and retry logic; error-prone compared with a managed orchestrator.
 - **Why not C:** Cloud Scheduler is cron; doesn't handle per-order orchestration. Dataflow is batch; not designed for individual order processing.
 - **Why not D:** Eventarc is for event routing from GCP sources (Cloud Storage, Pub/Sub), not external APIs like Stripe.
 
 **Scenario 5:** A company wants to build a customer data platform (CDP): ingest clickstream events (10 k/sec) from website, join with CRM data (MySQL), perform audience segmentation, and deliver segments to email marketing tool (webhook). Latency tolerance: up to 1 hour. Prefer low ops overhead. Which components?
 
-A) Pub/Sub (clickstream) → Dataflow → BigQuery, with the CRM table exported manually once a week as CSV and segments sent to the email tool by an engineer-run script
-B) Kafka on self-managed VMs → custom consumer → Elasticsearch → webhook caller
-C) Pub/Sub with a BigQuery subscription (clickstream) + Datastream (CRM MySQL CDC) → BigQuery segmentation (scheduled SQL) → Application Integration (webhook to email tool)
-D) Cloud Composer (DAG) → BigQuery ML segmentation → Dataflow → email webhook, with clickstream sent to the DAG by HTTP POST
+- A) Pub/Sub (clickstream) → Dataflow → BigQuery, with the CRM table exported manually once a week as CSV and segments sent to the email tool by an engineer-run script
+- B) Pub/Sub with a BigQuery subscription (clickstream) + Datastream (CRM MySQL CDC) → BigQuery segmentation (scheduled SQL) → Application Integration (webhook to email tool)
+- C) Kafka on self-managed VMs → custom consumer → Elasticsearch → webhook caller
+- D) Cloud Composer (DAG) → BigQuery ML segmentation → Dataflow → email webhook, with clickstream sent to the DAG by HTTP POST
 
-**Answer: C**
-- **Why C:** Pub/Sub handles 10 k events/s and writes straight to BigQuery without custom code; Datastream keeps the CRM data continuously replicated into BigQuery (fresh joins within the 1-hour tolerance); segmentation is plain SQL; Application Integration (or Workflows) delivers the webhooks with retries. Fully managed and low ops.
+**Answer: B**
+- **Why B:** Pub/Sub handles 10 k events/s and writes straight to BigQuery without custom code; Datastream keeps the CRM data continuously replicated into BigQuery (fresh joins within the 1-hour tolerance); segmentation is plain SQL; Application Integration (or Workflows) delivers the webhooks with retries. Fully managed and low ops.
 - **Why not A:** Weekly manual CRM exports violate the freshness requirement and the manual script is not low-ops.
-- **Why not B:** Self-managed Kafka and Elasticsearch require cluster operations and are not a segmentation platform.
+- **Why not C:** Self-managed Kafka and Elasticsearch require cluster operations and are not a segmentation platform.
 - **Why not D:** Airflow DAG runs are not an event-ingestion path for 10 k/s clickstream data; over-engineered and fragile.
 
 **Scenario 6:** Your organization has a petabyte-scale data lake in GCS (images, JSON logs, Parquet tables mixed). Data scientists want to query and perform SQL analytics without copying/converting formats. Compliance: encrypt with customer-managed keys (CMEK). Which service?
 
-A) BigLake tables (Google Cloud Lakehouse) over the Cloud Storage data, plus BigQuery object tables for images, with CMEK on the buckets and BigQuery resources, queried in place from BigQuery
-B) Load every file into BigQuery native tables, converting images and logs to rows, then delete the originals
-C) Nightly Dataflow job converting all data to CSV and loading it into Cloud SQL
-D) Move the data lake to Bigtable and query it with the HBase API
+- A) Load every file into BigQuery native tables, converting images and logs to rows, then delete the originals
+- B) Nightly Dataflow job converting all data to CSV and loading it into Cloud SQL
+- C) BigLake tables (Google Cloud Lakehouse) over the Cloud Storage data, plus BigQuery object tables for images, with CMEK on the buckets and BigQuery resources, queried in place from BigQuery
+- D) Move the data lake to Bigtable and query it with the HBase API
 
-**Answer: A**
-- **Why A:** BigLake tables let BigQuery query open-format files (Parquet, JSON, etc.) in Cloud Storage in place, with fine-grained security; object tables expose unstructured data such as images to SQL/ML. No data movement; CMEK is applied to the buckets and BigQuery resources. On-demand queries are billed by bytes scanned (or covered by capacity).
-- **Why not B:** Copying and converting a petabyte-scale lake contradicts the "without copying/converting" requirement and cannot represent images as rows.
-- **Why not C:** Cloud SQL is not designed for petabyte-scale analytics and the nightly conversion defeats the requirement.
+**Answer: C**
+- **Why C:** BigLake tables let BigQuery query open-format files (Parquet, JSON, etc.) in Cloud Storage in place, with fine-grained security; object tables expose unstructured data such as images to SQL/ML. No data movement; CMEK is applied to the buckets and BigQuery resources. On-demand queries are billed by bytes scanned (or covered by capacity).
+- **Why not A:** Copying and converting a petabyte-scale lake contradicts the "without copying/converting" requirement and cannot represent images as rows.
+- **Why not B:** Cloud SQL is not designed for petabyte-scale analytics and the nightly conversion defeats the requirement.
 - **Why not D:** Bigtable is a key-value/wide-column store, not a SQL analytics engine for a data lake.
 
 ---

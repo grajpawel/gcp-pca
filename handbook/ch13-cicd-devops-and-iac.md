@@ -307,61 +307,67 @@ Cloud Deploy [Delivery pipeline: targets (GKE / GKE Enterprise / Cloud Run; cust
 ## Practice scenarios
 
 **Scenario 1: Altostrat release regression caught late**
+
 A new version of the podcast recommendation service deployed to prod at 9 AM. By 11 AM, Customer Support reports users seeing wrong recommendations (old vs new). You have 2 hours to know: was it the new code, the database, or the model? Which tool/strategy prevents this?
 - A) Increase Cloud Run replicas and monitor CPU.
-- B) Deploy to canary (10% traffic), gate on recommendation accuracy metric, auto-rollback if accuracy drops >1%.
-- C) Add logging to every function, then reanalyze yesterday's logs.
-- D) Require sign-off from ML engineer before any deploy (manual gate).
+- B) Add logging to every function, then reanalyze yesterday's logs.
+- C) Require sign-off from ML engineer before any deploy (manual gate).
+- D) Deploy to canary (10% traffic), gate on recommendation accuracy metric, auto-rollback if accuracy drops >1%.
 
-**Answer: B.** Canary with verification gate would catch accuracy regression before 11 AM. Option A ignores the actual problem. Option C is reactive (incident already happened). Option D is human latency (why not automate?).
+**Answer: D.** Canary with verification gate would catch accuracy regression before 11 AM. Option A ignores the actual problem. Option B is reactive (incident already happened). Option C is human latency (why not automate?).
 
 ---
 
 **Scenario 2: Cymbal Retail multi-region Terraform**
+
 You manage Terraform for Cymbal's catalog API across US (primary) and EU (GDPR). Currently, all `.tf` files in one directory; US and EU environments have slightly different configs (EU uses Cloud KMS EU-HSM, US uses standard Cloud KMS). Which structure minimizes duplication and enables version pinning per environment?
-- A) Separate git branches per region; merge conflicts managed manually.
-- B) Terraform workspaces in same directory; all state in Cloud Storage; separate Cloud KMS backend per workspace.
-- C) Terraform modules (one for shared VPC, one for app, one for secrets); root modules per region reference these, pinned by version tag.
+- A) Terraform modules (one for shared VPC, one for app, one for secrets); root modules per region reference these, pinned by version tag.
+- B) Separate git branches per region; merge conflicts managed manually.
+- C) Terraform workspaces in same directory; all state in Cloud Storage; separate Cloud KMS backend per workspace.
 - D) Copy the whole configuration per region into separate Infrastructure Manager deployments with no shared modules.
 
-**Answer: C.** Modules + root modules per region allow reuse (VPC module is shared) and encapsulation (secrets module can vary KMS per region) + version pinning. Option A doesn't solve duplication. Option B doesn't encapsulate per-region secrets. Option D duplicates configuration per region (no reuse or version pinning).
+**Answer: A.** Modules + root modules per region allow reuse (VPC module is shared) and encapsulation (secrets module can vary KMS per region) + version pinning. Option B doesn't solve duplication. Option C doesn't encapsulate per-region secrets. Option D duplicates configuration per region (no reuse or version pinning).
 
 ---
 
 **Scenario 3: EHR patient-facing API Blue/Green cost**
+
 EHR has a blue/green deployment for its patient portal (must be zero-downtime; 99.9% SLA). Blue environment: 50 GKE nodes, $50K/month. Current deployment cycle: 2 weeks, 1 release per cycle. Leadership asks: "Are we wasting money on blue/green?" How do you decide?
-- A) Calculate the cost of downtime (patients unable to access records × support cost); if downtime cost > blue/green cost, keep blue/green.
-- B) Switch to rolling updates (cheaper); accept brief user session drops; add load balancer session affinity to minimize impact.
+- A) Switch to rolling updates (cheaper); accept brief user session drops; add load balancer session affinity to minimize impact.
+- B) Calculate the cost of downtime (patients unable to access records × support cost); if downtime cost > blue/green cost, keep blue/green.
 - C) Use canary instead; lower infrastructure cost and faster feedback.
 - D) Implement feature flags; deploy new code to blue, gate the feature, then toggle (no green environment needed).
 
-**Answer: A.** Blue/green is justified by RTO cost (patient data access critical). Option B increases CFR (session drops = SLA miss). Option C doesn't match "zero-downtime required" (canary assumes user impact acceptable). Option D requires app refactoring + feature flag service (not immediate cost savings).
+**Answer: B.** Blue/green is justified by RTO cost (patient data access critical). Option A increases CFR (session drops = SLA miss). Option C doesn't match "zero-downtime required" (canary assumes user impact acceptable). Option D requires app refactoring + feature flag service (not immediate cost savings).
 
 ---
 
 **Scenario 4: Cloud Build private pool for Altostrat on-prem**
+
 Altostrat's podcast ingestion pipeline runs on-prem (sensitive data). They want to build container images in GCP (Artifact Registry) but keep build secrets (on-prem S3 creds, API keys) never leaving on-prem. Standard Cloud Build with gcloud would upload source to GCS and download artifact—both cross the internet. What's the best approach?
 - A) Use Cloud Build standard pool; mount on-prem NFS as Cloud Storage FUSE mount; secrets stay local.
-- B) Cloud Build private pool peered with a VPC that is connected to the datacenter over HA VPN or Interconnect; builds reach on-prem resources over private IPs; artifact pushed to Artifact Registry.
-- C) Use Jenkins on-prem for builds; push artifact to GCS afterward.
+- B) Use Jenkins on-prem for builds; push artifact to GCS afterward.
+- C) Cloud Build private pool peered with a VPC that is connected to the datacenter over HA VPN or Interconnect; builds reach on-prem resources over private IPs; artifact pushed to Artifact Registry.
 - D) Store secrets in Secret Manager; Cloud Build standard pool pulls secrets during build (encrypted in transit via TLS).
 
-**Answer: B.** Private pools are Google-managed workers peered to your VPC, so builds reach on-prem systems privately over the hybrid link (the default pool cannot reach private IPs); no public internet path, and VPC-SC can be applied. Option A is overcomplicated (FUSE adds latency). Option C is extra operational burden (maintain Jenkins). Option D keeps the default pool's public path to on-prem systems (and cannot reach private IPs), so it does not meet the requirement.
+**Answer: C.** Private pools are Google-managed workers peered to your VPC, so builds reach on-prem systems privately over the hybrid link (the default pool cannot reach private IPs); no public internet path, and VPC-SC can be applied. Option A is overcomplicated (FUSE adds latency). Option B is extra operational burden (maintain Jenkins). Option D keeps the default pool's public path to on-prem systems (and cannot reach private IPs), so it does not meet the requirement.
 
 ---
 
 **Scenario 5: Apigee vs API Gateway for KnightMotives dealer APIs**
+
 KnightMotives needs a dealer API (order status, inventory, service booking) with tiered usage: Tier 1 = 100 req/sec, Tier 2 = 500 req/sec. Dealers by location (EU, US, APAC) with quotas per dealer. Also: 3 partners integrating (payment, CRM, logistics); each needs separate rate limits and billing. Which API platform is the best fit?
 - A) API Gateway + Cloud Armor (rate limit by IP).
-- B) Apigee (products/quotas per dealer, monetisation reporting, policy composition).
-- C) Cloud Endpoints + custom quotas service.
-- D) Cloud Run with concurrency limits + custom middleware.
+- B) Cloud Endpoints + custom quotas service.
+- C) Cloud Run with concurrency limits + custom middleware.
+- D) Apigee (products/quotas per dealer, monetisation reporting, policy composition).
 
-**Answer: B.** Apigee's products (bundle APIs), quotas (per app/user), analytics (by dealer/region), and revenue tracking are built for multi-tenant B2B. Option A doesn't track per-user quotas. Option C is lightweight but requires custom quotas service. Option D has no quotas/analytics native support.
+**Answer: D.** Apigee's products (bundle APIs), quotas (per app/user), analytics (by dealer/region), and revenue tracking are built for multi-tenant B2B. Option A doesn't track per-user quotas. Option B is lightweight but requires custom quotas service. Option C has no quotas/analytics native support.
 
 ---
 
 **Scenario 6: SAST blocking vs advisory in CI/CD**
+
 You're designing Cymbal's image scanning gate in Cloud Build. Trivy finds 10 "critical" vulnerabilities in a Python base image; Sonarqube finds 5 code defects. The code was written 3 years ago, already in prod, running fine. Do you block the build or make it advisory?
 - A) Block on both (zero-risk policy).
 - B) Advisory on both; let humans decide.
@@ -373,24 +379,26 @@ You're designing Cymbal's image scanning gate in Cloud Build. Trivy finds 10 "cr
 ---
 
 **Scenario 7: Terraform module versioning for multi-team reuse**
+
 Altostrat and Cymbal both need the same GKE cluster Terraform module (VPC, GKE, Workload Identity, monitoring). A shared team maintains the module in Git. How do multi-consuming teams safely version-pin?
-- A) All teams use `ref=main` (always latest); shared team tests thoroughly before merging.
-- B) Shared team publishes versions (v1.0, v1.1, v2.0); each team pins in their Terraform: `source = "git::https://...?ref=v1.0"` or Terraform Registry.
+- A) Shared team publishes versions (v1.0, v1.1, v2.0); each team pins in their Terraform: `source = "git::https://...?ref=v1.0"` or Terraform Registry.
+- B) All teams use `ref=main` (always latest); shared team tests thoroughly before merging.
 - C) Each team forks the module; maintains own copy (no coordination).
 - D) Module in Cloud Storage `.tar.gz`; teams download and check in (Git doesn't track modules).
 
-**Answer: B.** Git tags (semantic versioning) + pinning enable teams to upgrade at their pace (Altostrat on v1.0, Cymbal testing v2.0). Option A = all teams break together if bug introduced. Option C = duplicate maintenance. Option D = no version history, hard to audit.
+**Answer: A.** Git tags (semantic versioning) + pinning enable teams to upgrade at their pace (Altostrat on v1.0, Cymbal testing v2.0). Option B = all teams break together if bug introduced. Option C = duplicate maintenance. Option D = no version history, hard to audit.
 
 ---
 
 **Scenario 8: Troubleshooting latency spike after release**
+
 EHR's patient portal latency spiked 500ms avg (was 100ms) after 3 AM deploy. Incident commander: "Revert or drill down?" Logs show no errors. What's the fastest RCA path?
 - A) Revert immediately (minimize patient impact).
-- B) Check Cloud Trace for which service hop added latency (identify bottleneck), then decide revert vs fix.
-- C) Increase Cloud Run memory (maybe OOM causing GC pause).
+- B) Increase Cloud Run memory (maybe OOM causing GC pause).
+- C) Check Cloud Trace for which service hop added latency (identify bottleneck), then decide revert vs fix.
 - D) Check Cloud Build logs to see what changed; grep code for database queries.
 
-**Answer: B.** Cloud Trace pinpoints latency (e.g., "new database query takes 300ms on every request"). If it's code, revert is correct. If it's infra (e.g., new query scale exceeding cache), fix forward (add index, tune cache). Option A may be correct but blind (no RCA). Option C is guessing. Option D is slow (need to actually understand the code change).
+**Answer: C.** Cloud Trace pinpoints latency (e.g., "new database query takes 300ms on every request"). If it's code, revert is correct. If it's infra (e.g., new query scale exceeding cache), fix forward (add index, tune cache). Option A may be correct but blind (no RCA). Option B is guessing. Option D is slow (need to actually understand the code change).
 
 ## Sources
 

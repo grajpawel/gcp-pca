@@ -311,32 +311,32 @@ resource "google_org_policy_policy" "enforce_region" {
 
 **Scenario 1:** Your company stores EU customer data in BigQuery and must comply with GDPR. You want to ensure data never leaves the EU, even if an employee misconfigures replication. Which combination of controls is MOST effective?
 
-A) Enable CMEK and store keys in europe-west1  
-B) Org Policy `gcp.resourceLocations` constraint (`in:eu-locations`) + CMEK in EU + VPC-SC perimeter  
-C) IAM IP-address-based conditions restricting EU IP ranges  
-D) Cloud Armor rate-limiting on BigQuery API  
+- A) Org Policy `gcp.resourceLocations` constraint (`in:eu-locations`) + CMEK in EU + VPC-SC perimeter
+- B) Enable CMEK and store keys in europe-west1
+- C) IAM IP-address-based conditions restricting EU IP ranges
+- D) Cloud Armor rate-limiting on BigQuery API
 
-**Answer: B.** Org Policy blocks creation of non-EU resources at API layer (cannot accidentally replicate globally). CMEK ensures data encrypted with EU-held key. VPC-SC perimeter prevents export to non-EU services. A alone insufficient (CMEK is key security, not residency). C is network layer, not data residency. D is rate-limiting, not data locality.
+**Answer: A.** Org Policy blocks creation of non-EU resources at API layer (cannot accidentally replicate globally). CMEK ensures data encrypted with EU-held key. VPC-SC perimeter prevents export to non-EU services. B alone insufficient (CMEK is key security, not residency). C is network layer, not data residency. D is rate-limiting, not data locality.
 
 ---
 
 **Scenario 2:** A healthcare SaaS company must prove to auditors that patient data access has not been tampered with. The audit happens 90 days after go-live. What is the BEST strategy?
 
-A) Rely on Cloud Logging's default _Default bucket retention  
-B) Stream Data Access logs to Cloud Storage bucket with Bucket Lock (WORM) + configure immutability retention  
-C) Export logs to BigQuery for fast queries and HA replication  
-D) Keep logs in Cloud Logging console and print monthly screenshots  
+- A) Rely on Cloud Logging's default _Default bucket retention
+- B) Export logs to BigQuery for fast queries and HA replication
+- C) Stream Data Access logs to Cloud Storage bucket with Bucket Lock (WORM) + configure immutability retention
+- D) Keep logs in Cloud Logging console and print monthly screenshots
 
-**Answer: B.** Bucket Lock (WORM) retention policy prevents objects from being deleted or overwritten until retention expires, even by bucket owners, satisfying the auditor's tamper-evidence requirement (a locked Cloud Logging log bucket is an alternative). A: Data Access logs land in _Default, which keeps 30 days by default, so they would already be gone at day 90 (only Admin Activity/System Event keep 400 days in _Required), and it is not locked. C: BigQuery tables/datasets can be modified or deleted; no WORM guarantee. D: Printouts not tamper-evident and impractical for 90-day audit.
+**Answer: C.** Bucket Lock (WORM) retention policy prevents objects from being deleted or overwritten until retention expires, even by bucket owners, satisfying the auditor's tamper-evidence requirement (a locked Cloud Logging log bucket is an alternative). A: Data Access logs land in _Default, which keeps 30 days by default, so they would already be gone at day 90 (only Admin Activity/System Event keep 400 days in _Required), and it is not locked. B: BigQuery tables/datasets can be modified or deleted; no WORM guarantee. D: Printouts not tamper-evident and impractical for 90-day audit.
 
 ---
 
 **Scenario 3:** PCI DSS regulation states payment-card data (PAN) cannot be processed on the same database as inventory or customer profiles. You run an e-commerce platform. What design minimises PCI scope?
 
-A) Single Cloud SQL instance with separate tables; IAM roles restrict card-table access  
-B) Tokenise cards at edge (external payment gateway) → store only token in Cloud SQL; payment processing handled by payment provider's VPC-SC-isolated project  
-C) Encrypt card data with customer-managed keys and use Cloud DLP redaction on all queries  
-D) Run payments on Cloud Run with custom encryption; all other services on GKE  
+- A) Single Cloud SQL instance with separate tables; IAM roles restrict card-table access
+- B) Tokenise cards at edge (external payment gateway) → store only token in Cloud SQL; payment processing handled by payment provider's VPC-SC-isolated project
+- C) Encrypt card data with customer-managed keys and use Cloud DLP redaction on all queries
+- D) Run payments on Cloud Run with custom encryption; all other services on GKE
 
 **Answer: B.** Tokenisation is the gold-standard PCI strategy: card data never touches your DB, shrinking PCI scope dramatically (your systems then fall under a much lighter assessment, not zero obligations). Option A: single instance violates network segmentation (scope remains high). C: encryption + DLP helps, but data still in your DB (scope includes entire instance). D: separation by compute type doesn't satisfy PCI (data can still flow between).
 
@@ -344,45 +344,45 @@ D) Run payments on Cloud Run with custom encryption; all other services on GKE
 
 **Scenario 4:** You enable Data Access audit logs for Cloud Storage in a project. After 2 weeks, monthly log costs triple. What is the root cause and a mitigation?
 
-A) Data Access logs capture the full object contents; disable Data Access logs to save money  
-B) High-volume read workload (e.g. batch jobs or dashboards reading millions of objects) logging every object access; use log exclusion filter or exempted principals, or move that workload to a separate project outside audit scope  
-C) Bucket Lock is duplicating logs; remove Bucket Lock  
-D) Cloud Logging is charging per-log-line; compress logs manually  
+- A) Data Access logs capture the full object contents; disable Data Access logs to save money
+- B) Bucket Lock is duplicating logs; remove Bucket Lock
+- C) Cloud Logging is charging per-log-line; compress logs manually
+- D) High-volume read workload (e.g. batch jobs or dashboards reading millions of objects) logging every object access; use log exclusion filter or exempted principals, or move that workload to a separate project outside audit scope
 
-**Answer: B.** Data Access logs are charged for ingestion (Cloud Logging list price is about $0.50/GiB ⚠ verify current price). High-volume readers can generate millions of entries/day. Solution: exclude low-risk read patterns (e.g. a batch service account) via an exclusion filter or exempted principals in the audit config, or move that workload to a non-regulated project (if HIPAA/PCI doesn't require auditing it). A: disabling loses audit trail. C: Bucket Lock doesn't cost extra or increase volume. D: Logs cannot be compressed at API layer.
+**Answer: D.** Data Access logs are charged for ingestion (Cloud Logging list price is about $0.50/GiB ⚠ verify current price). High-volume readers can generate millions of entries/day. Solution: exclude low-risk read patterns (e.g. a batch service account) via an exclusion filter or exempted principals in the audit config, or move that workload to a non-regulated project (if HIPAA/PCI doesn't require auditing it). A: disabling loses audit trail. B: Bucket Lock doesn't cost extra or increase volume. C: Logs cannot be compressed at API layer.
 
 ---
 
 **Scenario 5:** Your org policy currently restricts compute resources to `us-central1` only. A team wants to deploy a disaster-recovery instance in `us-east1` for HA. What is the BEST path without violating compliance?
 
-A) Override org policy for the team's project (grant exception via policy amendment)  
-B) Create a separate folder for the DR project and set a different org policy on that folder  
-C) Use VPC peering from `us-central1` to `us-east1` instead of actual DR in `us-east1`  
-D) Request policy amendment to include `us-east1` in allowed regions, with business justification  
+- A) Override org policy for the team's project (grant exception via policy amendment)
+- B) Create a separate folder for the DR project and set a different org policy on that folder
+- C) Request policy amendment to include `us-east1` in allowed regions, with business justification
+- D) Use VPC peering from `us-central1` to `us-east1` instead of actual DR in `us-east1`
 
-**Answer: D.** Org Policy should be amended at the org/folder level based on business need. B is valid (hierarchy allows different policies per folder), but D is cleaner if both projects should be compliant. A: exceptions are not recommended (org policy should be unchangeable except by policy admin). C: peering doesn't create DR in `us-east1` (still single region failure point in `us-central1`).
+**Answer: C.** Org Policy should be amended at the org/folder level based on business need. B is valid (hierarchy allows different policies per folder), but C is cleaner if both projects should be compliant. A: exceptions are not recommended (org policy should be unchangeable except by policy admin). D: peering doesn't create DR in `us-east1` (still single region failure point in `us-central1`).
 
 ---
 
 **Scenario 6:** An AI company uses Gemini API to generate metadata for sensitive documents (legal contracts with PII redacted). The legal team asks: can Google use our prompts to train Gemini? What is the answer + required verification step?
 
-A) Yes, Google trains on all API calls; use SDP to mask prompts before sending  
-B) No, Google does not use customer data for training public models; verify contract DPA and "customer data commitment"  
-C) Depends on model; Flash models are trained on customer data, Pro models are not  
-D) Google stores prompts in Agent Platform logs for 30 days, then deletes; no training risk  
+- A) No, Google does not use customer data for training public models; verify contract DPA and "customer data commitment"
+- B) Yes, Google trains on all API calls; use SDP to mask prompts before sending
+- C) Depends on model; Flash models are trained on customer data, Pro models are not
+- D) Google stores prompts in Agent Platform logs for 30 days, then deletes; no training risk
 
-**Answer: B.** Google's standard commitment: customer data (including prompts to private Gemini APIs) is NOT used to train shared foundation models. Verify in contract DPA or Google's "Customer Data Terms." A: SDP masks sensitive data in documents, but incorrect premise (Google doesn't use prompts). C: incorrect, both models follow same data policy. D: logs are separate from training (deletion doesn't guarantee no training happened during retention window).
+**Answer: A.** Google's standard commitment: customer data (including prompts to private Gemini APIs) is NOT used to train shared foundation models. Verify in contract DPA or Google's "Customer Data Terms." B: SDP masks sensitive data in documents, but incorrect premise (Google doesn't use prompts). C: incorrect, both models follow same data policy. D: logs are separate from training (deletion doesn't guarantee no training happened during retention window).
 
 ---
 
 **Scenario 7 (Multi-select):** Which of the following are enforced by Org Policy and NOT bypassed by project-level IAM?
 
-A) Compute resources can only be created in europe-* regions  
-B) Users in group X can edit Cloud Storage buckets  
-C) Only service accounts with label `prod` can access Cloud KMS keys  
-D) Instances must have OS Login enabled  
+- A) Users in group X can edit Cloud Storage buckets
+- B) Only service accounts with label `prod` can access Cloud KMS keys
+- C) Instances must have OS Login enabled
+- D) Compute resources can only be created in europe-* regions
 
-**Answer: A, D.** Org Policy is enforced at the API layer; project owner cannot override. A: resource location constraint blocks non-EU resource creation (non-bypassable). D: OS Login constraint enforced by Compute API. B: IAM role (settable at project level) can be overridden by org admin; not org policy. C: IAM conditions (label-based) are IAM, not org policy (can be modified by project owner).
+**Answer: D, C.** Org Policy is enforced at the API layer; project owner cannot override. D: resource location constraint blocks non-EU resource creation (non-bypassable). C: OS Login constraint enforced by Compute API. A: IAM role (settable at project level) can be overridden by org admin; not org policy. B: IAM conditions (label-based) are IAM, not org policy (can be modified by project owner).
 
 ## Sources
 

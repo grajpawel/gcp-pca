@@ -338,85 +338,129 @@ START: I need to run code/workloads on GCP
 
 ## Practice scenarios
 
-**Q1: Scenario — Stateless web microservice, highly variable traffic (0–10,000 requests/min), cost-critical, must scale to near-zero idle.**
-- Likely design: Cloud Run service, concurrency 100, no min instances.
-- Automates: scaling up on traffic spike, scaling to 0 when idle. Why: a cold start of about a second is acceptable for web (not real-time). Cost per request optimised; no idle fees.
-- Why *not* GKE? Standard clusters keep nodes running (cost even when idle) and add cluster-ops overhead; Autopilot is workable but heavier than needed here.
-- Why *not* GCE MIG? Must manage instance lifecycle; higher ops burden.
+**Q1: A stateless web microservice has highly variable traffic (0–10,000 requests/min) and must cost as little as possible. It should scale to near-zero when idle, and a cold start of about a second is acceptable. Which compute option fits best?**
 
-**Answer: A)** Cloud Run with autoscaling and 0 min instances.
+- A) GKE Standard regional cluster with HPA and Cluster Autoscaler.
+- B) Regional managed instance group (MIG) with an autoscaler and a minimum of 2 instances.
+- C) Cloud Run service with autoscaling and minimum instances set to 0.
+- D) Cloud Run service with minimum instances set to 5 to avoid all cold starts.
 
----
+**Answer:** C
 
-**Q2: Scenario — Multi-tenant SaaS application. Each tenant has persistent data (PostgreSQL), needs <100 ms latency to DB, strict network isolation, ≥99.9 % uptime.**
-- Design: GKE Standard, regional cluster (multi-zone HA), StatefulSet for PostgreSQL + PersistentVolume (persistent disks). Network policies isolate tenants. Workload Identity + IAM roles per tenant service account.
-- Why: Stateful + persistent storage ruled out Cloud Run. Regional + multi-zone HA meets SLA. StatefulSet preserves pod identity & storage.
-- Why *not* GKE Autopilot? Autopilot also supports StatefulSets, PVs and network policies; pick Standard only because the stem implies node-level control (machine type, local SSD, privileged workloads).
-- Caveat: in a real design a managed database (Cloud SQL/AlloyDB with regional HA) is normally preferred over self-hosted PostgreSQL on GKE; the in-cluster DB is the answer here only because the question is constrained to compute choices and per-tenant co-location.
+**Why:** Cloud Run scales on request load, scales to zero when idle, and bills per request (request-based billing), so there are no idle fees. The stem accepts a cold start of about a second, which removes the only reason to keep warm instances.
 
-**Answer: C)** GKE Standard, regional, StatefulSet + persistent disk, Workload Identity for isolation.
+**Why not the others:** A: Standard node pools and the control plane keep costing money when idle, and you take on cluster operations (Autopilot is workable but heavier than needed). B: A MIG can't scale to zero with a minimum of 2, and you manage the instance lifecycle yourself. D: Minimum instances are billed even with no traffic; the stem tolerates cold starts, so they are pure waste.
 
 ---
 
-**Q3: Scenario — Daily batch ETL job (3 AM, processes 100 GB of data, ~10 hours, parallelizable, bursty, used once a day).**
-- Design: Cloud Batch (or Dataflow). Define job with task groups (parallelism factor). Use Spot VMs (up to 90 % savings on VMs). Schedule via Cloud Scheduler.
-- Why: Batch workload (to completion, not continuous). Spot acceptable (fault-tolerant, long-running doesn't mind interruption; Batch auto-restarts). Minimal ops (managed orchestration).
-- Why *not* GKE? Overkill; a Standard cluster's nodes cost money while idle ~14 h/day unless carefully scaled down. Batch provisions and removes VMs per job.
-- Why *not* GCE MIG? Would need to manually orchestrate parallel tasks; Batch does it.
+**Q2: A multi-tenant SaaS runs on Kubernetes, with each tenant in its own namespace. It needs pod-level network isolation between tenants, per-tenant least-privilege access to Google Cloud APIs, and at least 99.9 % availability. Tenant data lives in PostgreSQL and the application needs under 100 ms latency to the database. Which design is best?**
 
-**Answer: B)** Cloud Batch with Spot VMs, scheduled via Cloud Scheduler.
+- A) Single-zone GKE Standard cluster with a PostgreSQL Deployment on an emptyDir volume per tenant.
+- B) Regional GKE cluster with a namespace per tenant, NetworkPolicies, and Workload Identity Federation for GKE with one Kubernetes service account per tenant, using Cloud SQL for PostgreSQL (regional HA) over private IP.
+- C) One shared Cloud Run service for all tenants, with tenant isolation enforced only in application code.
+- D) Regional GKE cluster where all tenants share one Google service account through Workload Identity, with NetworkPolicies disabled for simplicity.
 
----
+**Answer:** B
 
-**Q4: Scenario — Serving TensorFlow models for image inference (50 ms latency SLA, peak 1000 req/sec, GPU-accelerated).**
-- Design: Cloud Run + GPU, or GKE + GPU node pool + model-serving container.
-- Cloud Run: simpler, auto-scales, no ops; GPU instances start in roughly 5 s, so set min instances to protect the 50 ms SLA from cold starts. Concurrency tunable (max 1000 per instance), but a GPU model usually needs a much lower value.
-- GKE: more control, can co-locate multiple models, complex ingress, Cloud Service Mesh for traffic management.
-- Likely answer: Cloud Run + GPU (simpler, managed).
-- Why *not* App Engine? No GPU support. Why *not* Cloud Run Functions? Not designed for high-throughput inference.
+**Why:** A regional cluster spreads nodes across zones, which supports the 99.9 % target. Namespaces plus NetworkPolicies isolate tenants at pod level, and per-tenant Workload Identity bindings give each tenant least-privilege access to Google APIs. A managed Cloud SQL instance with regional HA over private IP removes self-hosted database operations and keeps latency low from the same region.
 
-**Answer: A)** Cloud Run with GPU, concurrency tuned for request rate.
+**Why not the others:** A: A zonal cluster is a single point of failure, and `emptyDir` data is lost when the pod is rescheduled. C: Application-only isolation is weaker than network policies and per-tenant identities, and it doesn't fit the stem's Kubernetes-per-namespace model. D: Sharing one service account removes per-tenant least privilege, and disabling NetworkPolicies removes the isolation the stem requires.
+
+*Note:* GKE Autopilot also supports NetworkPolicies and Workload Identity; choose Standard only when the stem demands node-level control (machine types, local SSD, privileged workloads).
 
 ---
 
-**Q5: Scenario — Complex multi-service system: API gateway (stateless), data-processing sidecars (stateful, persistent cache), event handlers. Needs centralized logging, multi-region failover, on-prem integrations.**
-- Design: GKE multi-cluster (Fleet). Cluster 1 (us-central1), Cluster 2 (europe-west1). StatefulSet for cache (regional affinity). Cloud Run for stateless APIs if traffic is spiky; GKE Services for sidecars.
-- Logging: Cloud Logging (centralized across both clusters via Fleet integration).
-- On-prem: GKE private clusters with Interconnect, or Cloud VPN, into VPC with on-prem connectivity.
-- Why GKE multi-cluster? Provides geographic HA, reduces latency (each region has a cluster), unifies management.
-- Why *not* single GKE cluster? Single region is not true HA; multi-cluster is standard for SaaS.
+**Q3: A daily batch ETL job starts at 3 AM, processes 100 GB, and runs for about 10 hours. The work is parallelizable, tolerant of retries, and runs only once a day. You want the lowest cost and minimal operations. What should you use?**
 
-**Answer: C)** GKE multi-cluster (Fleet) in 2 regions, StatefulSet + cache, Cloud Logging aggregation, on-prem Interconnect.
+- A) A GKE Standard cluster running 24/7 with a Kubernetes CronJob.
+- B) A zonal MIG of on-demand VMs that stays running all day with a cron script.
+- C) A Cloud Run service (HTTP) invoked by Cloud Scheduler that processes the whole dataset in one request.
+- D) Cloud Batch with a task group for parallelism and Spot VMs, triggered by Cloud Scheduler.
 
----
+**Answer:** D
 
-**Q6: Scenario — Company must move a legacy 32-bit Windows app (runs on 64-bit Windows Server) to GCP, no time to refactor. Per-core BYOL licensing; no VMware in the current estate. ≥99.99 % uptime target.**
-- Design: Compute Engine Windows Server VMs (lift-and-shift), on sole-tenant nodes if the BYOL terms require dedicated hardware, deployed as instances in at least two zones behind a load balancer (stateful: regional persistent disks or application-level replication).
-- Why: no VMware estate to preserve, so VMware Engine adds cost and dedicated-node minimums for nothing. Windows runs natively on Compute Engine; GKE/Cloud Run are not suitable for a legacy Windows desktop-style app (GKE supports Windows node pools but needs containerisation).
-- Compute Engine SLA is 99.99 % for instances spread across multiple zones, which fits the target.
-- Sole-tenant nodes are zonal, so HA comes from running instances in multiple zones, not from the nodes themselves.
-- If the stem instead said "currently runs on on-prem VMware vSphere", the answer would flip to VMware Engine.
+**Why:** Batch is a managed scheduler for run-to-completion workloads: it provisions VMs for the job, runs tasks in parallel, retries preempted tasks, and removes the VMs afterwards. Spot VMs cut compute cost sharply and suit fault-tolerant work. Cloud Scheduler provides the 3 AM trigger.
 
-**Answer: D)** Compute Engine Windows VMs (sole-tenant if BYOL requires), across two or more zones.
+**Why not the others:** A: Nodes cost money for the roughly 14 idle hours each day unless carefully scaled down, and you operate the cluster. B: You pay for always-on on-demand VMs and must orchestrate parallel tasks yourself. C: A Cloud Run service request is capped at 60 minutes, far below 10 hours. (Cloud Run jobs allow longer task timeouts but are not what this option describes.)
 
 ---
 
-**Q7: Scenario — Team wants to adopt Kubernetes, but small workload (50 pods), uncertain traffic. Minimal DevOps staff (1 person). Prefer low ops overhead.**
-- Design: GKE Autopilot. Nodes auto-provisioned, auto-upgraded, patches applied automatically. Pod RBAC and Workload Identity baked in.
-- Why: Removes node lifecycle management (biggest ops burden). Auto-provisioning means don't over-spec clusters.
-- Why *not* GKE Standard? Would require 1 person to manage node pools, upgrades, security patches. Autopilot is purpose-built for this.
-- Why *not* Cloud Run? Only if workloads are HTTP-only; if they require long-running daemons or batch processing, GKE Autopilot is better.
+**Q4: You must serve a TensorFlow image-classification model with a 50 ms latency SLA at a peak of 1,000 requests/second. The model needs a GPU. The team has no Kubernetes expertise, serves a single model, and wants a fully managed platform. Which option is best?**
 
-**Answer: A)** GKE Autopilot.
+- A) Cloud Run with a GPU attached, minimum instances greater than 0, and concurrency tuned to the model.
+- B) Cloud Run with a GPU and minimum instances set to 0 to save cost.
+- C) App Engine standard environment with a GPU.
+- D) Cloud Run functions (CPU only) behind an API Gateway.
+
+**Answer:** A
+
+**Why:** Cloud Run supports GPUs on a fully managed, autoscaling platform, which suits a single model and a team without Kubernetes skills. GPU instances take about 5 seconds to start, so keeping a minimum number of warm instances protects the 50 ms SLA from cold starts. A GPU-backed model usually needs a much lower concurrency than the default, so tune it to the model.
+
+**Why not the others:** B: Scaling to zero means a cold start of seconds on the first request, which breaks a 50 ms SLA. C: App Engine standard has no GPU support. D: CPU-only functions are not designed for high-throughput GPU inference.
+
+*Note:* GKE with a GPU node pool is also a valid design when you need to co-locate several models or want advanced traffic management; the stem rules that out.
 
 ---
 
-**Q8: Scenario — Over-provisioned Kubernetes cluster. Pods request 4 vCPU / 8 GB memory, but actual usage is ~1 vCPU / 2 GB. No single fix (can't rewrite app). Cost is the constraint.**
-- Design: VPA (Vertical Pod Autoscaler) with auto-scaling mode. VPA observes actual usage, adjusts *requests*, triggers pod restart. Cluster Autoscaler then right-sizes node pool (fewer, smaller nodes needed).
-- Why: HPA scales *replicas*, not requests. HPA alone won't save cost here (cost is idle, over-provisioned space, not #replicas). VPA identifies over-provisioning, adjusts requests, enables tighter packing.
-- Follow-up: also consider Cluster Autoscaler to delete now-idle nodes.
+**Q5: A system has stateless APIs, stateful cache components that need persistent volumes, and event handlers. It must fail over between two regions, give central visibility across all clusters, and connect to on-prem systems. Which architecture fits best?**
 
-**Answer: C)** Deploy VPA in auto-recommendation + auto-approve mode, observe request adjustments, then scale down nodes via Cluster Autoscaler.
+- A) A single regional GKE cluster in one region, with Cloud Logging enabled.
+- B) A single zonal GKE Standard cluster connected to on-prem through Cloud VPN.
+- C) GKE clusters in two regions registered to a fleet, with multi-cluster Gateway or Ingress for failover, StatefulSets for the cache, Cloud Logging for central logs, and Interconnect or HA VPN to on-prem.
+- D) Cloud Run services only, in two regions, with the cache held in each container's local memory.
+
+**Answer:** C
+
+**Why:** Clusters in two regions give geographic high availability and lower latency. A fleet manages them as one logical group (shared configuration, policy, and observability), and multi-cluster Gateway or Ingress routes users to the closest healthy cluster. StatefulSets with persistent volumes cover the stateful cache, Cloud Logging aggregates logs from both clusters, and Interconnect or HA VPN provides the on-prem link.
+
+**Why not the others:** A: One region is not multi-region failover. B: A zonal cluster is a single point of failure and a single region. D: Container-local memory is not a persistent or shared cache, and the stem requires persistent volumes.
+
+---
+
+**Q6: A company must move a legacy 32-bit application that runs on 64-bit Windows Server to Google Cloud. There is no time to refactor, the licenses are bring-your-own (per-core), the current estate has no VMware, and the target availability is 99.99 %. Which approach is best?**
+
+- A) Google Cloud VMware Engine with HCX migration.
+- B) Compute Engine Windows Server VMs in two or more zones behind a load balancer, on sole-tenant nodes if the BYOL terms require dedicated hardware.
+- C) Cloud Run with the application packaged as a container.
+- D) GKE Standard with a single Windows node pool in one zone.
+
+**Answer:** B
+
+**Why:** Windows runs natively on Compute Engine, so lift-and-shift needs no refactoring. Compute Engine's 99.99 % SLA applies to instances spread across multiple zones, which matches the target. Sole-tenant nodes cover dedicated-hardware BYOL requirements; they are zonal, so high availability still comes from running instances in multiple zones.
+
+**Why not the others:** A: There is no VMware estate to preserve, so VMware Engine adds cost and dedicated-node minimums for nothing. C: Cloud Run runs Linux containers, not a legacy Windows application. D: A single-zone node pool cannot meet 99.99 %, and the app would also need containerising.
+
+*Note:* If the stem said the app currently runs on on-prem VMware vSphere, the answer would flip to VMware Engine.
+
+---
+
+**Q7: A team wants to adopt Kubernetes for about 50 pods with unpredictable traffic. They already have Kubernetes manifests, only one person handles operations, and they want to minimise node and cluster maintenance. Which option is best?**
+
+- A) GKE Standard with manually sized node pools.
+- B) Self-managed Kubernetes on Compute Engine VMs.
+- C) Cloud Run, because it avoids Kubernetes altogether.
+- D) GKE Autopilot.
+
+**Answer:** D
+
+**Why:** Autopilot provisions, scales, upgrades, and patches nodes for you and bills per pod, so you don't over-provision. That removes node lifecycle management, the biggest operational burden, while existing Kubernetes manifests still work.
+
+**Why not the others:** A: Standard leaves node pools, upgrades, and sizing to a one-person team. B: Self-managed Kubernetes carries the most operational burden of all. C: Cloud Run does not run existing Kubernetes manifests and suits stateless request-driven containers; the team wants Kubernetes.
+
+---
+
+**Q8: A GKE cluster is over-provisioned. Pods request 4 vCPU and 8 GB of memory, but actual usage is about 1 vCPU and 2 GB. The application cannot be rewritten, and cost is the main constraint. What should you do?**
+
+- A) Use Vertical Pod Autoscaler (starting in recommendation mode) to right-size pod requests, then let Cluster Autoscaler remove the nodes that become idle.
+- B) Add a Horizontal Pod Autoscaler on CPU utilisation.
+- C) Move the pods to a node pool with larger machine types.
+- D) Enable only Cluster Autoscaler and leave the pod requests unchanged.
+
+**Answer:** A
+
+**Why:** The cost comes from oversized *requests*, which reserve capacity that is never used. VPA observes actual usage and recommends (or applies) lower requests, which lets pods pack onto fewer nodes. Cluster Autoscaler then deletes the nodes that are no longer needed. Starting in recommendation mode lets you review the numbers before enabling automatic updates.
+
+**Why not the others:** B: HPA changes the number of replicas, not the size of each request, so it doesn't fix the over-provisioning. C: Bigger nodes increase cost without fixing oversized requests. D: With requests unchanged, the nodes still look full to the autoscaler, so it has nothing to remove.
 
 ## Sources
 

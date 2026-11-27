@@ -1167,27 +1167,27 @@
 
 **Q1. Your company stores EU customer data and must comply with GDPR. Data never leaves the EU, even if misconfigured. Which controls are MOST effective?**
 
-- A) Enable CMEK in europe-west1 only.
-- B) Org Policy `gcp.resourceLocations` constraint (EU value groups) + CMEK in EU + VPC-SC EU perimeter.
+- A) Org Policy `gcp.resourceLocations` constraint (EU value groups) + CMEK in EU + VPC-SC EU perimeter.
+- B) Enable CMEK in europe-west1 only.
 - C) IAM IP-address conditions restricting EU IP ranges.
 - D) Cloud Armor rate-limiting on BigQuery API.
 
-**Answer: B** - Org Policy blocks creation of non-EU resources at API layer. CMEK ensures EU-held encryption key. VPC-SC perimeter prevents export to non-EU services. A alone insufficient (key security ≠ residency). C is network layer. D is rate-limiting.
+**Answer: A** - Org Policy blocks creation of non-EU resources at API layer. CMEK ensures EU-held encryption key. VPC-SC perimeter prevents export to non-EU services. B alone insufficient (key security ≠ residency). C is network layer. D is rate-limiting.
 
-**Why not the others:** A: CMEK is encryption; doesn't enforce residency. C: Network conditions don't enforce data residency at creation time. D: Rate-limiting is unrelated to data residency.
+**Why not the others:** B: CMEK is encryption; doesn't enforce residency. C: Network conditions don't enforce data residency at creation time. D: Rate-limiting is unrelated to data residency.
 
 ---
 
 **Q2. You are designing a global e-commerce platform serving millions of users with <100 ms p99 latency, multi-region HA (99.95% SLA), and cost-conscious. Which compute + storage combo is most suitable?**
 
 - A) Zonal GKE in single region + Cloud SQL HA replica; Cloud Storage in single region.
-- B) Global HTTP(S) LB + multi-region GKE (Autopilot, 3 regions) + Spanner (multi-region); Firestore for session store.
-- C) Cloud Run services in a single region + Memorystore (Redis) multi-zone; BigQuery as the system of record for orders and inventory.
+- B) Cloud Run services in a single region + Memorystore (Redis) multi-zone; BigQuery as the system of record for orders and inventory.
+- C) Global HTTP(S) LB + multi-region GKE (Autopilot, 3 regions) + Spanner (multi-region); Firestore for session store.
 - D) Compute Engine MIGs (3 regions, manual failover) + Cloud SQL cross-region replicas; Cloud Storage multi-region.
 
-**Answer: B** - The global external Application LB (anycast, Premium Tier) routes each user to the nearest healthy region. Spanner multi-region gives a 99.999% SLA with strong consistency for globally distributed orders/inventory. Firestore serves session data with multi-region durability. Autopilot removes node-level ops burden.
+**Answer: C** - The global external Application LB (anycast, Premium Tier) routes each user to the nearest healthy region. Spanner multi-region gives a 99.999% SLA with strong consistency for globally distributed orders/inventory. Firestore serves session data with multi-region durability. Autopilot removes node-level ops burden.
 
-**Why not the others:** A: Zonal GKE = single point of failure; can't meet 99.95%. C: Single-region Cloud Run is not multi-region HA, and BigQuery is an analytics warehouse, not a transactional system of record. D: Manual failover gives an unpredictable RTO and cross-region Cloud SQL replicas are asynchronous, so it cannot meet the SLA reliably.
+**Why not the others:** A: Zonal GKE = single point of failure; can't meet 99.95%. B: Single-region Cloud Run is not multi-region HA, and BigQuery is an analytics warehouse, not a transactional system of record. D: Manual failover gives an unpredictable RTO and cross-region Cloud SQL replicas are asynchronous, so it cannot meet the SLA reliably.
 
 ---
 
@@ -1207,13 +1207,13 @@
 **Q4. You are planning a migration from on-prem mainframe (3 payment processing systems, 1 inventory system) to GCP. Mainframe runs 24/7, can't be offline, and must continue for 18 months post-cloud-go-live for regulatory hold. Which migration strategy minimizes risk and cost?**
 
 - A) Lift all 4 to Compute Engine VMs, test 3 months, hard cutover, retire mainframe.
-- B) Parallel-run all 4 (mainframe + GCP) for 18 months using Dataflow for reconciliation, cutover inventory first (lowest risk), then payment systems after 12 months.
-- C) Rehost payment systems to Cloud Run (assume stateless); refactor inventory to Firestore; retire mainframe immediately.
-- D) Replatform payment systems to Cloud SQL, inventory to BigQuery, run in parallel 6 months only.
+- B) Rehost payment systems to Cloud Run (assume stateless); refactor inventory to Firestore; retire mainframe immediately.
+- C) Replatform payment systems to Cloud SQL, inventory to BigQuery, run in parallel 6 months only.
+- D) Parallel-run all 4 (mainframe + GCP) for 18 months using Dataflow for reconciliation, cutover inventory first (lowest risk), then payment systems after 12 months.
 
-**Answer: B** - Parallel run minimizes cutover risk (can rollback). Dataflow handles reconciliation. Phased cutover (inventory first, payment systems later) lowers blast radius. 18-month hold is satisfied. Mainframe stays as safety net.
+**Answer: D** - Parallel run minimizes cutover risk (can rollback). Dataflow handles reconciliation. Phased cutover (inventory first, payment systems later) lowers blast radius. 18-month hold is satisfied. Mainframe stays as safety net.
 
-**Why not the others:** A: Hard cutover is risky if bugs found post-go-live. C: Payment processing isn't stateless; refactoring under time pressure is risky. D: 6 months insufficient for regulatory hold requirement (needs 18).
+**Why not the others:** A: Hard cutover is risky if bugs found post-go-live. B: Payment processing isn't stateless; refactoring under time pressure is risky. C: 6 months insufficient for regulatory hold requirement (needs 18).
 
 ---
 
@@ -1232,27 +1232,27 @@
 
 **Q6. A financial services firm wants to ensure 99.95% availability for their HIPAA-compliant patient database serving 10 million queries/day. They need zero data loss (RPO 0) and strongly consistent relational data across regions. Which database + replication strategy is correct?**
 
-- A) Cloud SQL (regional HA) in us-central1; read replicas in us-east1 and europe-west1; accept eventual consistency for reads.
-- B) Spanner (multi-region configuration); all reads/writes strongly consistent; CMEK enabled.
+- A) Spanner (multi-region configuration); all reads/writes strongly consistent; CMEK enabled.
+- B) Cloud SQL (regional HA) in us-central1; read replicas in us-east1 and europe-west1; accept eventual consistency for reads.
 - C) Cloud SQL (regional HA) with a cross-region read replica that is promoted manually after a regional disaster.
 - D) Bigtable (multi-cluster) with async replication; Cloud SQL for audit logs.
 
-**Answer: B** - Spanner multi-region provides a 99.999% SLA, synchronous replication (RPO 0) and strong consistency for relational data. CMEK supports customer key control for HIPAA workloads (also sign the BAA and use HIPAA-covered services). Single source of truth; no eventual-consistency complexity.
+**Answer: A** - Spanner multi-region provides a 99.999% SLA, synchronous replication (RPO 0) and strong consistency for relational data. CMEK supports customer key control for HIPAA workloads (also sign the BAA and use HIPAA-covered services). Single source of truth; no eventual-consistency complexity.
 
-**Why not the others:** A: Cross-region read replicas are asynchronous (possible data loss on failover) and reads are stale. C: Promotion is manual and the replica lags the primary, so RPO is not zero. D: Bigtable replication is async/eventually consistent and it is not relational (not compliant with zero-data-loss requirement).
+**Why not the others:** B: Cross-region read replicas are asynchronous (possible data loss on failover) and reads are stale. C: Promotion is manual and the replica lags the primary, so RPO is not zero. D: Bigtable replication is async/eventually consistent and it is not relational (not compliant with zero-data-loss requirement).
 
 ---
 
 **Q7. A retail company processes 100 GB of order data daily (structured, CSV files in Cloud Storage). They want to load into BigQuery daily, enrich with ML predictions (upsell recommendations), and export results to a CDP. Latency must be <1 hour end-to-end. Which pipeline is most cost-effective?**
 
-- A) Scheduled BigQuery load job from Cloud Storage → BigQuery ML prediction in a scheduled query → export results (EXPORT DATA to Cloud Storage or Pub/Sub) to the CDP, orchestrated by Workflows or Cloud Scheduler.
-- B) Dataproc (Spark) cluster spinning up daily → apply pre-trained Agent Platform Model Garden model → BigQuery sink.
-- C) Cloud Composer DAG: Cloud Storage → Dataflow → BigQuery ML inference → Cloud Workflows export.
+- A) Dataproc (Spark) cluster spinning up daily → apply pre-trained Agent Platform Model Garden model → BigQuery sink.
+- B) Cloud Composer DAG: Cloud Storage → Dataflow → BigQuery ML inference → Cloud Workflows export.
+- C) Scheduled BigQuery load job from Cloud Storage → BigQuery ML prediction in a scheduled query → export results (EXPORT DATA to Cloud Storage or Pub/Sub) to the CDP, orchestrated by Workflows or Cloud Scheduler.
 - D) Cloud Functions (CSV trigger) → transform in-memory → BigQuery insert → call Agent Platform batch endpoint.
 
-**Answer: A** - CSV files already in Cloud Storage can be loaded with BigQuery load jobs (no charge for the load itself), and BigQuery ML runs inside the warehouse (no custom endpoint, no data movement). Serverless and simple; easily within 1 hour.
+**Answer: C** - CSV files already in Cloud Storage can be loaded with BigQuery load jobs (no charge for the load itself), and BigQuery ML runs inside the warehouse (no custom endpoint, no data movement). Serverless and simple; easily within 1 hour.
 
-**Why not the others:** B: A Dataproc cluster is extra infrastructure to start and manage for a simple load. C: Cloud Composer and Dataflow add cost and moving parts the pipeline does not need. D: Cloud Functions inserting 100 GB row by row is not idiomatic; batch load jobs are cheaper and faster.
+**Why not the others:** A: A Dataproc cluster is extra infrastructure to start and manage for a simple load. B: Cloud Composer and Dataflow add cost and moving parts the pipeline does not need. D: Cloud Functions inserting 100 GB row by row is not idiomatic; batch load jobs are cheaper and faster.
 
 ---
 
@@ -1260,38 +1260,38 @@
 
 - A) Cold backup (daily snapshots to Cloud Storage Archive) + manual restore runbook.
 - B) Warm standby (Cloud SQL async read replica in secondary region) + Application Load Balancer + health checks; DNS failover on-demand.
-- C) Hot active-active (Spanner multi-region, sync replication) + Global Load Balancer; auto-failover on health check failure.
-- D) Pilot light (minimal CloudSQL replica, powered-off 95% of time; spin up on failover).
+- C) Pilot light (minimal CloudSQL replica, powered-off 95% of time; spin up on failover).
+- D) Hot active-active (Spanner multi-region, sync replication) + Global Load Balancer; auto-failover on health check failure.
 
-**Answer: C** - Spanner multi-region + global LB gives automatic health-check failover (seconds) and RPO ≈0 (synchronous replication). 10 min downtime/year is roughly 99.998% availability; only a hot, active-active design with automatic failover can credibly meet it. C is correct.
+**Answer: D** - Spanner multi-region + global LB gives automatic health-check failover (seconds) and RPO ≈0 (synchronous replication). 10 min downtime/year is roughly 99.998% availability; only a hot, active-active design with automatic failover can credibly meet it. D is correct.
 
-**Why not the others:** A: Cold backup/restore takes hours to a day (exceeds the 1-hr RTO). B: Warm standby with an async replica has non-zero RPO and manual/on-demand DNS failover, so it cannot reliably stay within 10 min/year. D: Pilot light needs manual activation and a build-out step (tens of minutes to hours).
+**Why not the others:** A: Cold backup/restore takes hours to a day (exceeds the 1-hr RTO). B: Warm standby with an async replica has non-zero RPO and manual/on-demand DNS failover, so it cannot reliably stay within 10 min/year. C: Pilot light needs manual activation and a build-out step (tens of minutes to hours).
 
 ---
 
 **Q9. A healthcare SaaS (EHR) serving hospitals across US and EU needs consistent, low-latency reads and writes (<100 ms) for hospitals on both continents, and each hospital must see only its own data. Current architecture: single Cloud SQL in us-central1. Which architecture is the best fit?**
 
-- A) Spanner with a multi-region configuration spanning US and EU + fine-grained access control (database roles) per hospital.
-- B) Cloud SQL cross-region read replica in europe-west1; IAM policies per hospital.
+- A) Cloud SQL cross-region read replica in europe-west1; IAM policies per hospital.
+- B) Spanner with a multi-region configuration spanning US and EU + fine-grained access control (database roles) per hospital.
 - C) Firestore (multi-region) with per-hospital document partitioning + IAM + Cloud Armor.
 - D) Cloud SQL HA (single region) + Cloud VPN to EU clinics; local caching with Memorystore EU.
 
-**Answer: A** - Spanner serves strongly consistent reads and writes from both continents (synchronous replication, RPO 0), and fine-grained access control restricts each hospital's role to its own rows/columns. Single source of truth; low operational complexity. (Check data-residency rules for EU patient data before choosing a cross-continent configuration.)
+**Answer: B** - Spanner serves strongly consistent reads and writes from both continents (synchronous replication, RPO 0), and fine-grained access control restricts each hospital's role to its own rows/columns. Single source of truth; low operational complexity. (Check data-residency rules for EU patient data before choosing a cross-continent configuration.)
 
-**Why not the others:** B: The EU replica is read-only (writes still cross the Atlantic to the US primary), and IAM does not enforce per-row isolation. C: Firestore is a document store (not a relational fit for the existing Cloud SQL schema), and Cloud Armor does not isolate tenant data. D: A single region means EU users pay trans-Atlantic round trips on every query; caching does not help writes.
+**Why not the others:** A: The EU replica is read-only (writes still cross the Atlantic to the US primary), and IAM does not enforce per-row isolation. C: Firestore is a document store (not a relational fit for the existing Cloud SQL schema), and Cloud Armor does not isolate tenant data. D: A single region means EU users pay trans-Atlantic round trips on every query; caching does not help writes.
 
 ---
 
 **Q10. You're consulting for KnightMotives (autonomous vehicle co.). They need consistent AI UX across vehicle models (legacy + new), with onboard inference for safety (no cloud fallback). Connectivity is unreliable in rural areas. What is the architecture?**
 
 - A) All AI models in cloud (Agent Platform) only; offline cache on vehicles using a LiteRT (TensorFlow Lite) fallback.
-- B) Compact on-device models (LiteRT/TensorFlow Lite) for safety-critical functions + cloud Agent Platform for non-critical (infotainment, analytics).
-- C) Edge TPU deployment on vehicle hardware + large Gemini models run through Agent Runtime on the vehicle.
+- B) Edge TPU deployment on vehicle hardware + large Gemini models run through Agent Runtime on the vehicle.
+- C) Compact on-device models (LiteRT/TensorFlow Lite) for safety-critical functions + cloud Agent Platform for non-critical (infotainment, analytics).
 - D) Cloud Run endpoints with edge caching; critical models replicated to on-device SQLite.
 
-**Answer: B** - Safety-critical inference (steering, braking) must run on-device (no latency/connectivity risk). Non-critical inference (suggestions, analytics) runs in the cloud. Hybrid approach balances safety + features + cost.
+**Answer: C** - Safety-critical inference (steering, braking) must run on-device (no latency/connectivity risk). Non-critical inference (suggestions, analytics) runs in the cloud. Hybrid approach balances safety + features + cost.
 
-**Why not the others:** A: Cloud-primary design depends on connectivity; unsafe for safety-critical functions. C: Agent Runtime is a managed cloud service, not an on-device runtime, and large Gemini models do not fit vehicle memory/power budgets. D: SQLite not designed for model serving; edge caching insufficient for continuous decision-making.
+**Why not the others:** A: Cloud-primary design depends on connectivity; unsafe for safety-critical functions. B: Agent Runtime is a managed cloud service, not an on-device runtime, and large Gemini models do not fit vehicle memory/power budgets. D: SQLite not designed for model serving; edge caching insufficient for continuous decision-making.
 
 ---
 
@@ -1300,78 +1300,78 @@
 **Q11. Your company runs 50 microservices on GKE Standard (3-zone cluster, 300 nodes). Developers request: high autoscaling granularity, cost optimization, and automated right-sizing and node scaling, while the platform team still needs privileged DaemonSets and custom node images/kernel settings. What should you deploy?**
 
 - A) GKE Autopilot (replaces Standard cluster; managed nodes, automatic scaling).
-- B) Existing Standard + add Vertical Pod Autoscaler (VPA) for right-sizing + Cluster Autoscaler for node scaling.
-- C) Existing Standard + migrate to Compute Engine MIGs + manual instance groups.
-- D) GKE Standard + switch to Spot VMs (save 80%) + add Kueue for job prioritization.
+- B) Existing Standard + migrate to Compute Engine MIGs + manual instance groups.
+- C) GKE Standard + switch to Spot VMs (save 80%) + add Kueue for job prioritization.
+- D) Existing Standard + add Vertical Pod Autoscaler (VPA) for right-sizing + Cluster Autoscaler for node scaling.
 
-**Answer: B** - VPA right-sizes pods (request tuning); Cluster Autoscaler adds/removes nodes. Both work with Standard cluster, giving full control + cost optimization without replatforming.
+**Answer: D** - VPA right-sizes pods (request tuning); Cluster Autoscaler adds/removes nodes. Both work with Standard cluster, giving full control + cost optimization without replatforming.
 
-**Why not the others:** A: Autopilot manages nodes for you but restricts privileged workloads and custom node images/kernel settings, which the stem requires. C: MIGs are less granular than Kubernetes autoscaling. D: Spot is fault-tolerant only; not suitable for persistent services (Kueue is for batch).
+**Why not the others:** A: Autopilot manages nodes for you but restricts privileged workloads and custom node images/kernel settings, which the stem requires. B: MIGs are less granular than Kubernetes autoscaling. C: Spot is fault-tolerant only; not suitable for persistent services (Kueue is for batch).
 
 ---
 
 **Q12. You're migrating a stateful monolithic Java app (500 GB database, 10,000 concurrent users) from on-prem to GCP. The app uses external file shares (NFS) for temp storage. Which compute + storage combo is most appropriate?**
 
-- A) Cloud Run + Cloud Storage FUSE mount (stateless app, object storage).
-- B) GKE StatefulSet (1 pod, PersistentVolume) + Filestore Regional (shared NFS); Compute Engine VM for legacy support.
-- C) Compute Engine VMs in a managed instance group (e.g., n2-standard-8) for the app (rehost) + Cloud SQL for the 500 GB database (managed replatform) + Filestore for the NFS temp storage; load-balanced by a load balancer.
+- A) Compute Engine VMs in a managed instance group (e.g., n2-standard-8) for the app (rehost) + Cloud SQL for the 500 GB database (managed replatform) + Filestore for the NFS temp storage; load-balanced by a load balancer.
+- B) Cloud Run + Cloud Storage FUSE mount (stateless app, object storage).
+- C) GKE StatefulSet (1 pod, PersistentVolume) + Filestore Regional (shared NFS); Compute Engine VM for legacy support.
 - D) Cloud SQL (migrate 500 GB) + Cloud Run (stateless) + Cloud Storage (replace NFS).
 
-**Answer: C** - The monolith is stateful and expects NFS, so it needs Compute Engine (not Cloud Run). Filestore provides the familiar NFS share; Cloud SQL takes over database operations with minimal change. Minimal refactoring.
+**Answer: A** - The monolith is stateful and expects NFS, so it needs Compute Engine (not Cloud Run). Filestore provides the familiar NFS share; Cloud SQL takes over database operations with minimal change. Minimal refactoring.
 
-**Why not the others:** A: Cloud Run is stateless; can't run the monolith directly. B: A single StatefulSet pod for 10k users is a SPOF and does not scale. D: Re-architecting the monolith to Cloud Run (stateless) is high-risk and time-consuming.
+**Why not the others:** B: Cloud Run is stateless; can't run the monolith directly. C: A single StatefulSet pod for 10k users is a SPOF and does not scale. D: Re-architecting the monolith to Cloud Run (stateless) is high-risk and time-consuming.
 
 ---
 
 **Q13. Your batch ML training pipeline (200 TB dataset, 48 hrs training, GPUs required) runs monthly. The training code already checkpoints and can resume after interruption, cost is critical, and the team does not want to run a cluster. Which infrastructure is most cost-effective?**
 
 - A) Compute Engine MIG (n1-highmem-96 + 8 A100 GPUs) reserved for 1 year; run 1 month/year, idle 11 months.
-- B) Compute Engine Spot VMs (8 A100s) + checkpointing every 10 min; 30-second preemption notice; you script the restart on preemption.
-- C) GKE cluster (Spot + On-demand mix); Kueue for job queuing; DWS Flex Start for GPU provision on-demand.
-- D) Cloud Batch API + Spot VMs + container image with training code; serverless orchestration.
+- B) Cloud Batch API + Spot VMs + container image with training code; serverless orchestration.
+- C) Compute Engine Spot VMs (8 A100s) + checkpointing every 10 min; 30-second preemption notice; you script the restart on preemption.
+- D) GKE cluster (Spot + On-demand mix); Kueue for job queuing; DWS Flex Start for GPU provision on-demand.
 
-**Answer: D** - Batch provisions Spot VMs (roughly 60–91% cheaper) with no cluster to manage, and its retry policy re-runs interrupted tasks (the job resumes from its checkpoints). Ideal for a monthly run packaged as a container.
+**Answer: B** - Batch provisions Spot VMs (roughly 60–91% cheaper) with no cluster to manage, and its retry policy re-runs interrupted tasks (the job resumes from its checkpoints). Ideal for a monthly run packaged as a container.
 
-**Why not the others:** A: A 1-year reservation/commitment sits idle 11 months = wasteful. B: You build the restart/orchestration logic yourself. C: Needs a GKE cluster plus Kueue for a single monthly job; more to operate (DWS Flex Start is a reasonable alternative when GPU capacity is the issue).
+**Why not the others:** A: A 1-year reservation/commitment sits idle 11 months = wasteful. C: You build the restart/orchestration logic yourself. D: Needs a GKE cluster plus Kueue for a single monthly job; more to operate (DWS Flex Start is a reasonable alternative when GPU capacity is the issue).
 
 ---
 
 **Q14. Your company's microservices (30 services, gRPC, variable load 10–1000 RPS) run on GKE Standard. Several services rely on Kubernetes-specific features (DaemonSets, a service mesh). You want a more managed setup, less operational burden, and faster deployment. Which is the best next step?**
 
-- A) Migrate the cluster to GKE Autopilot (Google-managed nodes), keeping the Kubernetes workloads as they are.
-- B) Rewrite all 30 services to run on Cloud Run services, with Memorystore for distributed caching.
-- C) Move to GKE Enterprise multi-cloud (AWS + GCP).
+- A) Rewrite all 30 services to run on Cloud Run services, with Memorystore for distributed caching.
+- B) Move to GKE Enterprise multi-cloud (AWS + GCP).
+- C) Migrate the cluster to GKE Autopilot (Google-managed nodes), keeping the Kubernetes workloads as they are.
 - D) Move back to Compute Engine VMs for some services and Cloud Run for the rest.
 
-**Answer: A** - Autopilot removes node lifecycle management (less ops burden) while keeping the existing Kubernetes workloads and features. Lower risk than a full refactor.
+**Answer: C** - Autopilot removes node lifecycle management (less ops burden) while keeping the existing Kubernetes workloads and features. Lower risk than a full refactor.
 
-**Why not the others:** B: Cloud Run has no DaemonSets/mesh equivalents, so this is a re-architecture, not a migration. C: Multi-cloud adds complexity with no stated requirement. D: Mixing Compute Engine back in increases, not reduces, operational burden.
+**Why not the others:** A: Cloud Run has no DaemonSets/mesh equivalents, so this is a re-architecture, not a migration. B: Multi-cloud adds complexity with no stated requirement. D: Mixing Compute Engine back in increases, not reduces, operational burden.
 
 ---
 
 **Q15. A customer requires a hybrid setup: 50 on-prem application servers (Linux), about 100 Mbps of traffic, latency tolerance of tens of milliseconds with no strict jitter requirement, cost-optimized. Which hybrid connectivity is appropriate?**
 
-- A) HA VPN + Cloud Router (BGP); the on-prem site uses a standard IPsec/IKE VPN gateway.
-- B) Dedicated Interconnect (10 Gbps) with a colocation cross-connect.
-- C) Partner Interconnect via local carrier + Cloud Router; on-prem termination at carrier PoP.
-- D) Cross-Cloud Interconnect (GCP ↔ AWS); on-prem apps live on AWS EC2.
+- A) Dedicated Interconnect (10 Gbps) with a colocation cross-connect.
+- B) Partner Interconnect via local carrier + Cloud Router; on-prem termination at carrier PoP.
+- C) Cross-Cloud Interconnect (GCP ↔ AWS); on-prem apps live on AWS EC2.
+- D) HA VPN + Cloud Router (BGP); the on-prem site uses a standard IPsec/IKE VPN gateway.
 
-**Answer: A** - HA VPN is cost-effective for ~100 Mbps (each tunnel supports up to ~3 Gbps) and offers a 99.99% SLA when both interfaces are configured correctly. Cloud Router exchanges routes dynamically. No circuit provisioning. Note Cloud VPN rides the public internet, so latency is not guaranteed; a strict latency/jitter requirement would point to Interconnect.
+**Answer: D** - HA VPN is cost-effective for ~100 Mbps (each tunnel supports up to ~3 Gbps) and offers a 99.99% SLA when both interfaces are configured correctly. Cloud Router exchanges routes dynamically. No circuit provisioning. Note Cloud VPN rides the public internet, so latency is not guaranteed; a strict latency/jitter requirement would point to Interconnect.
 
-**Why not the others:** B: Dedicated Interconnect is overkill and expensive for 100 Mbps. C: Partner Interconnect costs more than VPN for this volume (consider it only when latency or SLA needs it). D: Cross-Cloud Interconnect links Google Cloud to another cloud and does not serve on-prem servers.
+**Why not the others:** A: Dedicated Interconnect is overkill and expensive for 100 Mbps. B: Partner Interconnect costs more than VPN for this volume (consider it only when latency or SLA needs it). C: Cross-Cloud Interconnect links Google Cloud to another cloud and does not serve on-prem servers.
 
 ---
 
 **Q16. Your data pipeline ingests 1 TB/day of IoT sensor data, needs sub-second latency for alerts, and must scale to 10,000 sensors. Which messaging + storage combo is best?**
 
-- A) Cloud Tasks (one task per sensor event) → Cloud Functions → Firestore (real-time).
-- B) Pub/Sub topic (ordering key = sensor ID where per-sensor order matters) → Dataflow (windowed aggregation) → BigQuery (analytics) + Firestore (real-time alerts).
+- A) Pub/Sub topic (ordering key = sensor ID where per-sensor order matters) → Dataflow (windowed aggregation) → BigQuery (analytics) + Firestore (real-time alerts).
+- B) Cloud Tasks (one task per sensor event) → Cloud Functions → Firestore (real-time).
 - C) Kafka (managed Confluent Cloud) → BigQuery; Memorystore for alerting cache.
 - D) Cloud Storage (hourly batch files) → Cloud Composer (daily ingestion) → BigQuery.
 
-**Answer: B** - Pub/Sub is the managed, autoscaling ingestion layer for high-volume streams. Dataflow processes windowed aggregations with low latency. BigQuery for analytics; Firestore for real-time alert queries. A standard IoT streaming architecture.
+**Answer: A** - Pub/Sub is the managed, autoscaling ingestion layer for high-volume streams. Dataflow processes windowed aggregations with low latency. BigQuery for analytics; Firestore for real-time alert queries. A standard IoT streaming architecture.
 
-**Why not the others:** A: Cloud Tasks dispatches individual asynchronous tasks with rate control; it is not a high-volume streaming ingestion service. C: Running Kafka adds cost and operations that Pub/Sub already covers natively on Google Cloud. D: Batch (hourly) defeats sub-second latency requirement.
+**Why not the others:** B: Cloud Tasks dispatches individual asynchronous tasks with rate control; it is not a high-volume streaming ingestion service. C: Running Kafka adds cost and operations that Pub/Sub already covers natively on Google Cloud. D: Batch (hourly) defeats sub-second latency requirement.
 
 ---
 
@@ -1390,14 +1390,14 @@
 
 **Q18. Your company wants to standardize container images across 200 teams, enforce supply chain security (no unsigned images deploy), and scan for vulnerabilities automatically. Which tool combo is correct?**
 
-- A) Artifact Registry (central) + Cloud Build (build provenance/attestations) + Binary Authorization (signed/attested images only) + Artifact Analysis (vulnerability scanning).
-- B) Docker Hub + GitHub Actions + manual image inspection + deploy to GCE.
-- C) Artifact Registry + Cloud Build + Cloud Deploy only (no scanning or signing).
-- D) Container Registry (shut down) + gcloud builds + custom scanning scripts.
+- A) Docker Hub + GitHub Actions + manual image inspection + deploy to GCE.
+- B) Artifact Registry + Cloud Build + Cloud Deploy only (no scanning or signing).
+- C) Container Registry (shut down) + gcloud builds + custom scanning scripts.
+- D) Artifact Registry (central) + Cloud Build (build provenance/attestations) + Binary Authorization (signed/attested images only) + Artifact Analysis (vulnerability scanning).
 
-**Answer: A** - Artifact Registry centralizes images. Cloud Build produces provenance/attestations. Binary Authorization enforces the signature/attestation policy at deploy time. Artifact Analysis scans for vulnerabilities automatically. Covers the supply chain end to end.
+**Answer: D** - Artifact Registry centralizes images. Cloud Build produces provenance/attestations. Binary Authorization enforces the signature/attestation policy at deploy time. Artifact Analysis scans for vulnerabilities automatically. Covers the supply chain end to end.
 
-**Why not the others:** B: External registries + manual inspection don't scale. C: Lacks vulnerability scanning + signature enforcement. D: Container Registry has been shut down (replaced by Artifact Registry); custom scripts are not auditable.
+**Why not the others:** A: External registries + manual inspection don't scale. B: Lacks vulnerability scanning + signature enforcement. C: Container Registry has been shut down (replaced by Artifact Registry); custom scripts are not auditable.
 
 ---
 
@@ -1416,27 +1416,27 @@
 
 **Q20. Your company has 1000 developers accessing 500 GCP projects. You want to grant access per team (Data, Backend, Frontend) without listing individual users. Best practice?**
 
-- A) Create IAM roles per team; grant role to each developer individually (tedious but explicit).
-- B) Create Cloud Identity Groups (data-team@company.com, backend-team@company.com); add team members as groups; grant roles to groups.
+- A) Create Cloud Identity Groups (data-team@company.com, backend-team@company.com); add team members as groups; grant roles to groups.
+- B) Create IAM roles per team; grant role to each developer individually (tedious but explicit).
 - C) Use OS Login for all developers; SSH into GCE VMs using OS Login credentials; control access via IAM.
 - D) Use Workforce Identity Federation (contractors + employees) with external IdP.
 
-**Answer: B** - Groups decouple user management from IAM. Add/remove developers from group; role stays attached to group. Scales to 1000 users without duplicate role grants.
+**Answer: A** - Groups decouple user management from IAM. Add/remove developers from group; role stays attached to group. Scales to 1000 users without duplicate role grants.
 
-**Why not the others:** A: 1000 individual grants = unscalable. C: OS Login is for SSH; doesn't solve API/console access. D: WIF is for external identities (contractors); internal employees use Cloud Identity + groups.
+**Why not the others:** B: 1000 individual grants = unscalable. C: OS Login is for SSH; doesn't solve API/console access. D: WIF is for external identities (contractors); internal employees use Cloud Identity + groups.
 
 ---
 
 **Q21. You want to reduce network egress costs (currently $10k/month) for a high-traffic web app (Global LB → multi-region GKE backends). Where should you focus?**
 
-- A) Reduce HTTP response size (compression, caching headers) → Cloud CDN + local caching layers.
-- B) Migrate to Cloud Run (serverless) → auto-scale → reduced traffic.
+- A) Migrate to Cloud Run (serverless) → auto-scale → reduced traffic.
+- B) Reduce HTTP response size (compression, caching headers) → Cloud CDN + local caching layers.
 - C) Switch to Compute Engine + Network LB (cheaper than HTTP(S) LB).
 - D) Use Premium Tier networking instead of Standard (reduce hops, lower egress cost).
 
-**Answer: A** - Cloud CDN serves cacheable content from Google's edge locations, reducing origin traffic and egress (CDN cache egress is also priced lower than origin egress). Compression reduces response size. Caching headers reduce redundant requests. Direct impact on egress costs.
+**Answer: B** - Cloud CDN serves cacheable content from Google's edge locations, reducing origin traffic and egress (CDN cache egress is also priced lower than origin egress). Compression reduces response size. Caching headers reduce redundant requests. Direct impact on egress costs.
 
-**Why not the others:** B: Cloud Run doesn't reduce egress costs (still charged per GB out). C: A Network LB doesn't reduce egress (same traffic out of Google Cloud) and loses L7 features. D: Premium Tier is the higher-priced tier (Standard Tier has lower per-GB egress cost but a regional scope and public-internet routing), so it increases cost.
+**Why not the others:** A: Cloud Run doesn't reduce egress costs (still charged per GB out). C: A Network LB doesn't reduce egress (same traffic out of Google Cloud) and loses L7 features. D: Premium Tier is the higher-priced tier (Standard Tier has lower per-GB egress cost but a regional scope and public-internet routing), so it increases cost.
 
 ---
 
@@ -1445,13 +1445,13 @@
 **Q22. A fintech company stores credit card data (PAN, CVV) in a "payment" project separate from analytics projects. They want to ensure card data never reaches analytics (regulatory block). What is the control?**
 
 - A) IAM policies (deny BigQuery.dataAdmin in payment project).
-- B) VPC Service Controls (payment project in perimeter; analytics outside) + egress rule blocking external APIs.
-- C) Cloud Storage + Cloud KMS (encrypt card data; require decryption key for export).
+- B) Cloud Storage + Cloud KMS (encrypt card data; require decryption key for export).
+- C) VPC Service Controls (payment project in perimeter; analytics outside) + egress rule blocking external APIs.
 - D) Data Loss Prevention (DLP) discovery + redaction on export.
 
-**Answer: B** - VPC-SC perimeter enforces API-level boundary. Egress rule inside perimeter blocks calls to analytics BigQuery. Even if developer tries to export, VPC-SC blocks at API layer (not network layer).
+**Answer: C** - VPC-SC perimeter enforces API-level boundary. Egress rule inside perimeter blocks calls to analytics BigQuery. Even if developer tries to export, VPC-SC blocks at API layer (not network layer).
 
-**Why not the others:** A: IAM is additive (allows); doesn't block determined developer. C: Encryption is data protection, not exfiltration prevention. D: DLP redaction is last-mile; doesn't prevent access to unredacted data.
+**Why not the others:** A: IAM is additive (allows); doesn't block determined developer. B: Encryption is data protection, not exfiltration prevention. D: DLP redaction is last-mile; doesn't prevent access to unredacted data.
 
 ---
 
@@ -1471,39 +1471,39 @@
 **Q24. Your company must comply with the EU AI Act (obligations for high-risk AI systems). You're building a loan-approval AI (credit scoring is a high-risk use case). Which set of controls best supports compliance?**
 
 - A) Use only open-source models (GPL license guarantees compliance).
-- B) Implement human-in-the-loop review, audit logs (all inference + decision rationale), model card documentation, and test for bias.
-- C) Encrypt data in transit only (HTTPS); compliance is encryption.
-- D) Use Google's public Gemini models; Google is compliant, so you are.
+- B) Encrypt data in transit only (HTTPS); compliance is encryption.
+- C) Use Google's public Gemini models; Google is compliant, so you are.
+- D) Implement human-in-the-loop review, audit logs (all inference + decision rationale), model card documentation, and test for bias.
 
-**Answer: B** - Human-in-the-loop (humans review borderline cases), audit logs (decision trail), model cards (transparency), bias testing (fairness) are core EU AI Act requirements for high-risk systems.
+**Answer: D** - Human-in-the-loop (humans review borderline cases), audit logs (decision trail), model cards (transparency), bias testing (fairness) are core EU AI Act requirements for high-risk systems.
 
-**Why not the others:** A: License compliance ≠ AI governance. C: Encryption is data protection, not AI governance. D: Google's compliance ≠ customer's compliance; customer responsible for their use case.
+**Why not the others:** A: License compliance ≠ AI governance. B: Encryption is data protection, not AI governance. C: Google's compliance ≠ customer's compliance; customer responsible for their use case.
 
 ---
 
 **Q25. You have a Cloud SQL database with customer data in `us-central1`. A developer accidentally exports the database to a Cloud Storage bucket in a project outside your organization. Which control prevents this class of incident in future?**
 
 - A) Enforce the Org Policy constraint `constraints/storage.publicAccessPrevention`; it stops buckets from being made public.
-- B) Use VPC Service Controls perimeter (Block export APIs outside perimeter).
-- C) Enable Cloud DLP to scan Cloud Storage; redact PII in public files.
+- B) Enable Cloud DLP to scan Cloud Storage; redact PII in public files.
+- C) Use VPC Service Controls perimeter (Block export APIs outside perimeter).
 - D) Revoke developer's access; rotate database credentials.
 
-**Answer: B** - VPC-SC perimeter prevents Cloud SQL export to Cloud Storage outside perimeter (API-level block). More efficient than post-hoc DLP scanning.
+**Answer: C** - VPC-SC perimeter prevents Cloud SQL export to Cloud Storage outside perimeter (API-level block). More efficient than post-hoc DLP scanning.
 
-**Why not the others:** A: Public access prevention stops public exposure of a bucket, but does not stop an export to a bucket outside the organization. C: DLP is detective (after the data is already out); VPC-SC is preventive. D: Revoking one developer's access and rotating credentials is a response to this incident, not a control that blocks the export path.
+**Why not the others:** A: Public access prevention stops public exposure of a bucket, but does not stop an export to a bucket outside the organization. B: DLP is detective (after the data is already out); VPC-SC is preventive. D: Revoking one developer's access and rotating credentials is a response to this incident, not a control that blocks the export path.
 
 ---
 
 **Q26. Your company handles EU customer genetic data (extreme high-risk under GDPR). Storage location, encryption key management, and audit trails must be customer-controlled. Which GCP service supports this?**
 
-- A) Org Policy resource-location constraint to EU regions, with Google-default encryption keys.
-- B) Assured Workloads / Sovereign Controls for the EU (EU data residency, Access Transparency/Approval) + Cloud EKM (keys held in an external key manager outside Google) + Cloud Audit Logs.
+- A) Assured Workloads / Sovereign Controls for the EU (EU data residency, Access Transparency/Approval) + Cloud EKM (keys held in an external key manager outside Google) + Cloud Audit Logs.
+- B) Org Policy resource-location constraint to EU regions, with Google-default encryption keys.
 - C) Cloud Storage + client-side encryption (data encrypted before upload).
 - D) BigQuery + Sensitive Data Protection + Confidential Computing.
 
-**Answer: B** - Sovereign/Assured Workloads controls enforce EU residency and restrict/record Google personnel access; Cloud EKM keeps the encryption keys outside Google under customer control, with key use auditable. Meets the residency, key-control and audit requirements together.
+**Answer: A** - Sovereign/Assured Workloads controls enforce EU residency and restrict/record Google personnel access; Cloud EKM keeps the encryption keys outside Google under customer control, with key use auditable. Meets the residency, key-control and audit requirements together.
 
-**Why not the others:** A: Location constraint gives residency but Google-managed keys give no key control. C: Client-side encryption gives key control but pushes encryption/key handling into every application and blocks server-side processing and analytics. D: Sensitive Data Protection and Confidential Computing address detection and data-in-use protection, not key custody or residency.
+**Why not the others:** B: Location constraint gives residency but Google-managed keys give no key control. C: Client-side encryption gives key control but pushes encryption/key handling into every application and blocks server-side processing and analytics. D: Sensitive Data Protection and Confidential Computing address detection and data-in-use protection, not key custody or residency.
 
 ---
 
@@ -1523,13 +1523,13 @@
 **Q28. Your company's ML model (trained on customer data) must be auditable: show which customers' data was used, whether their consent was obtained, and any model retraining. What is the architecture?**
 
 - A) Log all training data to BigQuery with customer ID, with no link between rows and model versions.
-- B) Model Registry (versions linked to training datasets) + Dataplex Universal Catalog lineage and metadata (including consent/purpose tags on datasets) + Cloud Audit Logs (who trained and when).
-- C) Agent Platform Pipelines for reproducible runs + Cloud Audit Logs only, with no catalog or consent metadata.
-- D) TensorFlow SavedModel with embedded metadata; store in Cloud Storage.
+- B) Agent Platform Pipelines for reproducible runs + Cloud Audit Logs only, with no catalog or consent metadata.
+- C) TensorFlow SavedModel with embedded metadata; store in Cloud Storage.
+- D) Model Registry (versions linked to training datasets) + Dataplex Universal Catalog lineage and metadata (including consent/purpose tags on datasets) + Cloud Audit Logs (who trained and when).
 
-**Answer: B** - Model Registry ties each model version to its training data; the catalog's lineage and tags show dataset ownership, consent/purpose and processing history; Cloud Audit Logs show who trained and when. Together they form a full audit trail.
+**Answer: D** - Model Registry ties each model version to its training data; the catalog's lineage and tags show dataset ownership, consent/purpose and processing history; Cloud Audit Logs show who trained and when. Together they form a full audit trail.
 
-**Why not the others:** A: Raw data copies are not linked to model versions and add a second copy of customer data. C: Pipelines give reproducibility but nothing records consent or dataset ownership. D: Metadata embedded in an artifact does not scale across datasets/versions and is not centrally queryable.
+**Why not the others:** A: Raw data copies are not linked to model versions and add a second copy of customer data. B: Pipelines give reproducibility but nothing records consent or dataset ownership. C: Metadata embedded in an artifact does not scale across datasets/versions and is not centrally queryable.
 
 ---
 
@@ -1549,52 +1549,52 @@
 **Q30. A SaaS vendor must prove to customers that only authorized staff access their data. Staff includes developers (on-call rotation), DBAs (schema maintenance), and auditors (read-only). What IAM + governance setup minimizes access?**
 
 - A) Three predefined roles (compute.admin, cloudsql.admin, logging.viewer); grant to staff users directly.
-- B) Create custom roles (dev-oncall, dba-maintenance, auditor-readonly) with minimum permissions; grant to Cloud Identity Groups; use Principal Access Boundary (PAB) to limit scope per customer.
-- C) Use OS Login for all; audit SSH logs; Workload Identity for apps.
+- B) Use OS Login for all; audit SSH logs; Workload Identity for apps.
+- C) Create custom roles (dev-oncall, dba-maintenance, auditor-readonly) with minimum permissions; grant to Cloud Identity Groups; use Principal Access Boundary (PAB) to limit scope per customer.
 - D) Enforce Deny Policies (deny all by default; allow specific actions per role).
 
-**Answer: B** - Custom roles reduce permissions; groups scale to 100s of staff. PAB sandboxes staff access per customer (customer A DBAs only see customer A data). Maximum least-privilege.
+**Answer: C** - Custom roles reduce permissions; groups scale to 100s of staff. PAB sandboxes staff access per customer (customer A DBAs only see customer A data). Maximum least-privilege.
 
-**Why not the others:** A: Predefined roles too broad (admin). C: OS Login is for SSH; doesn't control API access. D: Deny Policies are too blunt (deny all breaks normal work); allow-based (roles) is better.
+**Why not the others:** A: Predefined roles too broad (admin). B: OS Login is for SSH; doesn't control API access. D: Deny Policies are too blunt (deny all breaks normal work); allow-based (roles) is better.
 
 ---
 
 **Q31. Your company is migrating 10 TB of PII-heavy data from on-prem to Cloud Storage. You want to ensure sensitive data is detected + redacted during migration. Which tool is most appropriate?**
 
-- A) Cloud DLP Discovery job (scan Cloud Storage post-upload for PII patterns).
-- B) Tag PII fields in the source system and rely on those tags to protect the data after migration.
-- C) Dataflow pipeline with DLP transform (redact PII during ingestion → Cloud Storage).
+- A) Dataflow pipeline with DLP transform (redact PII during ingestion → Cloud Storage).
+- B) Cloud DLP Discovery job (scan Cloud Storage post-upload for PII patterns).
+- C) Tag PII fields in the source system and rely on those tags to protect the data after migration.
 - D) Cloud KMS encryption (encrypt everything; compliance satisfied).
 
-**Answer: C** - Dataflow pipeline with DLP transform catches PII during ingestion (not after). Redaction is applied on-the-fly. Prevents storing plain PII.
+**Answer: A** - Dataflow pipeline with DLP transform catches PII during ingestion (not after). Redaction is applied on-the-fly. Prevents storing plain PII.
 
-**Why not the others:** A: Post-upload discovery is reactive; PII already stored. B: Source-side tags do not detect or redact PII in the files being copied. D: Encryption protects, but doesn't redact (still stored encrypted).
+**Why not the others:** B: Post-upload discovery is reactive; PII already stored. C: Source-side tags do not detect or redact PII in the files being copied. D: Encryption protects, but doesn't redact (still stored encrypted).
 
 ---
 
 **Q32. A US federal agency processes controlled unclassified information (CUI) and must meet FedRAMP High. Which Google Cloud deployment fits?**
 
 - A) Standard Google Cloud regions + EU Sovereign Cloud offerings.
-- B) Assured Workloads with the FedRAMP High compliance regime (US data residency, personnel and service restrictions, CMEK/EKM for key control).
-- C) Cross-Cloud Interconnect to another cloud provider's government region.
-- D) Bare Metal Solution in a standard region, linked on-prem via Cloud Interconnect.
+- B) Cross-Cloud Interconnect to another cloud provider's government region.
+- C) Bare Metal Solution in a standard region, linked on-prem via Cloud Interconnect.
+- D) Assured Workloads with the FedRAMP High compliance regime (US data residency, personnel and service restrictions, CMEK/EKM for key control).
 
-**Answer: B** - Assured Workloads applies the FedRAMP High control package (US residency, restricted support personnel, supported services only) to a folder, with customer-controlled keys on top. (Truly classified Secret/Top Secret workloads need Google Distributed Cloud air-gapped, not public regions.)
+**Answer: D** - Assured Workloads applies the FedRAMP High control package (US residency, restricted support personnel, supported services only) to a folder, with customer-controlled keys on top. (Truly classified Secret/Top Secret workloads need Google Distributed Cloud air-gapped, not public regions.)
 
-**Why not the others:** A: EU sovereign offerings target EU requirements, not FedRAMP. C: Cross-Cloud Interconnect is private connectivity, not a compliance regime. D: Bare Metal Solution in a standard region does not by itself apply the FedRAMP High control package.
+**Why not the others:** A: EU sovereign offerings target EU requirements, not FedRAMP. B: Cross-Cloud Interconnect is private connectivity, not a compliance regime. C: Bare Metal Solution in a standard region does not by itself apply the FedRAMP High control package.
 
 ---
 
 **Q33. You want to prevent developers from accidentally committing API keys to git. Which control is most effective?**
 
-- A) Use Secret Manager for all secrets; scan git history with `git-secrets` pre-commit hook.
-- B) Use Git commit signing (GPG) + Cloud KMS key; review all commits before merge.
+- A) Use Git commit signing (GPG) + Cloud KMS key; review all commits before merge.
+- B) Use Secret Manager for all secrets; scan git history with `git-secrets` pre-commit hook.
 - C) Binary Authorization + a Cloud Build scanning step (block the build if secrets are found in code).
 - D) Educate developers; rely on self-discipline.
 
-**Answer: A** - Secret Manager (external secrets, not in code) + pre-commit hook (scan local git before push) catches secrets early. Layered defense.
+**Answer: B** - Secret Manager (external secrets, not in code) + pre-commit hook (scan local git before push) catches secrets early. Layered defense.
 
-**Why not the others:** B: Commit signing verifies author, not secret content. C: SAST in build is late (already committed). D: Self-discipline alone fails at scale.
+**Why not the others:** A: Commit signing verifies author, not secret content. C: SAST in build is late (already committed). D: Self-discipline alone fails at scale.
 
 ---
 
@@ -1628,14 +1628,14 @@
 
 **Q36. Your company's GCP bill is $50k/month. You want to understand where money goes and implement cost governance. What's the first step?**
 
-- A) Enable Cloud Billing export to BigQuery; analyze by service, project, label.
-- B) Use Pricing Calculator to estimate each service's cost.
+- A) Use Pricing Calculator to estimate each service's cost.
+- B) Enable Cloud Billing export to BigQuery; analyze by service, project, label.
 - C) Right-size all VMs manually using the Recommender (VM rightsizing).
 - D) Purchase 3-year CUDs across all services to "lock in savings."
 
-**Answer: A** - Billing export to BigQuery is the foundation for analysis (by label, service, project). Without visibility, you can't optimize. Recommender is next step; CUDs without visibility risk wasting money.
+**Answer: B** - Billing export to BigQuery is the foundation for analysis (by label, service, project). Without visibility, you can't optimize. Recommender is next step; CUDs without visibility risk wasting money.
 
-**Why not the others:** B: Pricing Calculator is pre-deployment estimate, not post-deployment analysis. C: Recommender is tactical (VM right-sizing); doesn't address app architecture. D: CUDs without visibility risk stranded capacity.
+**Why not the others:** A: Pricing Calculator is pre-deployment estimate, not post-deployment analysis. C: Recommender is tactical (VM right-sizing); doesn't address app architecture. D: CUDs without visibility risk stranded capacity.
 
 ---
 
@@ -1655,39 +1655,39 @@
 **Q38. Your team manages 5 GCP projects (dev, staging, prod, data, infra). Each project has different cost drivers: prod is compute-heavy, data is storage-heavy. How do you allocate FinOps responsibility?**
 
 - A) Single finance team monitors all 5 projects; approves budget per project monthly.
-- B) Team leads own their project budgets; set labels (cost-center, app); track via Billing BigQuery; finance audits quarterly.
-- C) Automate costs: apply Recommender suggestions and Spot VMs everywhere without review.
-- D) Assume Google Cloud optimizes costs automatically; no team involvement needed.
+- B) Automate costs: apply Recommender suggestions and Spot VMs everywhere without review.
+- C) Assume Google Cloud optimizes costs automatically; no team involvement needed.
+- D) Team leads own their project budgets; set labels (cost-center, app); track via Billing BigQuery; finance audits quarterly.
 
-**Answer: B** - Distributed accountability (team leads + labels) enables fast optimization. Quarterly finance audit prevents drift. Recommender suggestions are reviewed by the owning team before being applied.
+**Answer: D** - Distributed accountability (team leads + labels) enables fast optimization. Quarterly finance audit prevents drift. Recommender suggestions are reviewed by the owning team before being applied.
 
-**Why not the others:** A: Single team bottleneck; doesn't scale. C: Blindly applying rightsizing and Spot can break apps (need testing). D: Recommender only suggests changes; someone must review and apply them, and nothing else is automatic.
+**Why not the others:** A: Single team bottleneck; doesn't scale. B: Blindly applying rightsizing and Spot can break apps (need testing). C: Recommender only suggests changes; someone must review and apply them, and nothing else is automatic.
 
 ---
 
 **Q39. You're planning a 3-year GCP migration for a $10M CapEx-heavy on-prem infrastructure (data center lease + hardware). Cloud estimates $2M OpEx/year. How do you justify it to finance?**
 
 - A) Compare the $10M CapEx with 3 years of cloud OpEx ($2M/yr × 3) only, ignoring on-prem running costs; cloud wins.
-- B) Focus on speed-to-market benefits; cloud enables 6-month faster feature launch (worth $5M in new revenue).
-- C) Use Migration Center's cost estimate (vs. Pricing Calculator) + quantify avoided costs (power, cooling, maintenance).
+- B) Use Migration Center's cost estimate (vs. Pricing Calculator) + quantify avoided costs (power, cooling, maintenance).
+- C) Focus on speed-to-market benefits; cloud enables 6-month faster feature launch (worth $5M in new revenue).
 - D) Assume cloud is cheaper; request approval without financial analysis.
 
-**Answer: C** - Migration Center provides accurate target-specific cost estimates (vs. Pricing Calculator's generic SKU pricing). Quantifying avoided OpEx (power, cooling, staff) makes ROI clear.
+**Answer: B** - Migration Center provides accurate target-specific cost estimates (vs. Pricing Calculator's generic SKU pricing). Quantifying avoided OpEx (power, cooling, staff) makes ROI clear.
 
-**Why not the others:** A: Ignores on-prem running costs (power, cooling, staff, hardware refresh), so the TCO comparison is incomplete. B: Speed-to-market is speculative (hard to quantify). D: No analysis = risky approval.
+**Why not the others:** A: Ignores on-prem running costs (power, cooling, staff, hardware refresh), so the TCO comparison is incomplete. C: Speed-to-market is speculative (hard to quantify). D: No analysis = risky approval.
 
 ---
 
 **Q40. Your microservices platform has 20 services, each with custom alerting (email, Slack, PagerDuty). Alert fatigue is high (thousands/day). What's the root cause + fix?**
 
 - A) Increase alerting threshold (ignore low-severity alerts).
-- B) Switch to SLO burn-rate alerting (alert only if SLO at risk, not on every metric spike).
-- C) Reduce monitoring granularity (fewer metrics = fewer alerts).
+- B) Reduce monitoring granularity (fewer metrics = fewer alerts).
+- C) Switch to SLO burn-rate alerting (alert only if SLO at risk, not on every metric spike).
 - D) Mute alerts during business hours (ops team responds faster).
 
-**Answer: B** - SLO burn-rate alerts are symptom-based (user-facing impact); metric alerts are noisy (CPU spike ≠ user impact). Reduce alert count + improve relevance. Pair with on-call rotations for escalation.
+**Answer: C** - SLO burn-rate alerts are symptom-based (user-facing impact); metric alerts are noisy (CPU spike ≠ user impact). Reduce alert count + improve relevance. Pair with on-call rotations for escalation.
 
-**Why not the others:** A: Raises threshold but doesn't fix root cause. C: Reduced granularity hides real problems. D: Muting is avoidance, not fixing.
+**Why not the others:** A: Raises threshold but doesn't fix root cause. B: Reduced granularity hides real problems. D: Muting is avoidance, not fixing.
 
 ---
 
@@ -1695,40 +1695,40 @@
 
 **Q41. You're implementing GitOps (desired state in git, automated deployment) for many GKE clusters fed by 50 repos. Which Google-managed approach centralizes deployment policy and reverts accidental manual changes?**
 
-- A) Imperative `gcloud`/`kubectl apply` scripts triggered manually per repo.
-- B) Config Sync (GKE Enterprise) reconciling each cluster from git continuously, with Policy Controller enforcing fleet-wide policy.
+- A) Config Sync (GKE Enterprise) reconciling each cluster from git continuously, with Policy Controller enforcing fleet-wide policy.
+- B) Imperative `gcloud`/`kubectl apply` scripts triggered manually per repo.
 - C) A third-party SaaS IaC tool with drift detection that you must integrate yourself.
 - D) A self-hosted open-source GitOps controller that you install and operate on every cluster.
 
-**Answer: B** - Config Sync is a managed GitOps controller that continuously reconciles cluster state to the repo (reverting drift/manual edits), and Policy Controller applies policy fleet-wide. Native to Google Cloud.
+**Answer: A** - Config Sync is a managed GitOps controller that continuously reconciles cluster state to the repo (reverting drift/manual edits), and Policy Controller applies policy fleet-wide. Native to Google Cloud.
 
-**Why not the others:** A: Imperative and manual; no continuous reconciliation, so drift is not reverted. C: Infrastructure-focused tooling you integrate yourself; not an in-cluster reconciler with fleet policy. D: Works (e.g. Argo CD) but is not Google-managed; you own installation, upgrades and operations.
+**Why not the others:** B: Imperative and manual; no continuous reconciliation, so drift is not reverted. C: Infrastructure-focused tooling you integrate yourself; not an in-cluster reconciler with fleet policy. D: Works (e.g. Argo CD) but is not Google-managed; you own installation, upgrades and operations.
 
 ---
 
 **Q42. Your team uses Terraform (50+ modules, shared across 10 projects). State files contain sensitive data (API keys, passwords). You want the state to stay inside your Google Cloud organization. What's the safest way to manage Terraform state?**
 
 - A) Store state in Cloud Storage with public read access (easier for team collaboration).
-- B) The `gcs` remote backend (built-in state locking, object versioning) on a private bucket with uniform bucket-level access, least-privilege IAM and CMEK; keep secrets out of state where possible.
-- C) A third-party hosted remote backend outside your organization (managed locking, encryption by default).
-- D) Store state in git repo (version control + audit trail).
+- B) A third-party hosted remote backend outside your organization (managed locking, encryption by default).
+- C) Store state in git repo (version control + audit trail).
+- D) The `gcs` remote backend (built-in state locking, object versioning) on a private bucket with uniform bucket-level access, least-privilege IAM and CMEK; keep secrets out of state where possible.
 
-**Answer: B** - The native `gcs` backend gives remote state, locking and versioning, and you control encryption keys and access with IAM/CMEK inside your own organization.
+**Answer: D** - The native `gcs` backend gives remote state, locking and versioning, and you control encryption keys and access with IAM/CMEK inside your own organization.
 
-**Why not the others:** A: Public state = exposed secrets. C: Can work, but state (with secrets) leaves your org and your IAM/CMEK controls. D: State in git exposes secrets in history and has no locking.
+**Why not the others:** A: Public state = exposed secrets. B: Can work, but state (with secrets) leaves your org and your IAM/CMEK controls. C: State in git exposes secrets in history and has no locking.
 
 ---
 
 **Q43. You're building a CI/CD pipeline for a microservice (deployed to GKE via Cloud Deploy). You want to ensure only signed container images deploy. Which sequence is correct?**
 
 - A) Cloud Build → build container → push to Artifact Registry → Cloud Deploy → GKE deploy (no signing).
-- B) Cloud Build → build + sign (cosign + KMS key) → push signed image and attestation to Artifact Registry → Cloud Deploy → GKE, where the Binary Authorization policy verifies the attestation at admission.
-- C) Cloud Build → build → push to Artifact Registry → human review (manual signing) → Cloud Deploy.
+- B) Cloud Build → build → push to Artifact Registry → human review (manual signing) → Cloud Deploy.
+- C) Cloud Build → build + sign (cosign + KMS key) → push signed image and attestation to Artifact Registry → Cloud Deploy → GKE, where the Binary Authorization policy verifies the attestation at admission.
 - D) Build locally → push container → GKE deploy (no Cloud Build).
 
-**Answer: B** - Cloud Build signs images with KMS key (provenance/SLSA attestation). Artifact Registry stores signed image + attestation. Binary Authorization enforces signature policy at GKE deploy time. Full supply chain security.
+**Answer: C** - Cloud Build signs images with KMS key (provenance/SLSA attestation). Artifact Registry stores signed image + attestation. Binary Authorization enforces signature policy at GKE deploy time. Full supply chain security.
 
-**Why not the others:** A: No signature = can deploy unsigned images. C: Manual signing is slow + not auditable. D: Local build bypasses CI pipeline.
+**Why not the others:** A: No signature = can deploy unsigned images. B: Manual signing is slow + not auditable. D: Local build bypasses CI pipeline.
 
 ---
 
@@ -1749,14 +1749,14 @@
 
 **Q45. Your production GKE cluster (1000 pods, 300 nodes) has intermittent latency spikes (p99 latency 200 ms → 1 sec). Where do you investigate first?**
 
-- A) Increase node count (assumes scaling solves latency).
-- B) Cloud Trace (distributed tracing to find slow service) + Cloud Profiler (CPU hotspots within that service).
+- A) Cloud Trace (distributed tracing to find slow service) + Cloud Profiler (CPU hotspots within that service).
+- B) Increase node count (assumes scaling solves latency).
 - C) Cloud Monitoring dashboards (CPU, memory, network graphs).
 - D) Restart all pods (often fixes transient issues).
 
-**Answer: B** - Cloud Trace shows which service is slow; Cloud Profiler shows why (CPU hotspot, lock contention, etc.). Most direct path to root cause.
+**Answer: A** - Cloud Trace shows which service is slow; Cloud Profiler shows why (CPU hotspot, lock contention, etc.). Most direct path to root cause.
 
-**Why not the others:** A: Scaling won't help if bottleneck is single service. C: Dashboards show symptoms, not root cause. D: Restart is avoidance; problem returns.
+**Why not the others:** B: Scaling won't help if bottleneck is single service. C: Dashboards show symptoms, not root cause. D: Restart is avoidance; problem returns.
 
 ---
 
@@ -1764,38 +1764,38 @@
 
 - A) Provisioned Throughput sized for the 1000 RPS peak, running all the time; cost is high but capacity is guaranteed.
 - B) Pay-as-you-go Gemini + a Cloud Run HTTP cache in front, with a second endpoint as fallback.
-- C) Pay-as-you-go (per-token) Gemini + Memorystore (Redis) caching of results for repeated queries to cut model calls and latency.
-- D) Self-host an open model on GKE with GPU nodes sized for peak; scale manually.
+- C) Self-host an open model on GKE with GPU nodes sized for peak; scale manually.
+- D) Pay-as-you-go (per-token) Gemini + Memorystore (Redis) caching of results for repeated queries to cut model calls and latency.
 
-**Answer: C** - Pay-as-you-go has no idle cost, and a cache absorbs repeated requests, reducing both spend and latency. Handle peaks with quota planning (and Provisioned Throughput only if guaranteed capacity becomes a requirement).
+**Answer: D** - Pay-as-you-go has no idle cost, and a cache absorbs repeated requests, reducing both spend and latency. Handle peaks with quota planning (and Provisioned Throughput only if guaranteed capacity becomes a requirement).
 
-**Why not the others:** A: Capacity sized for peak is paid for even when traffic is low; it suits steady, predictable high load. B: A fallback endpoint does not reduce cost, and HTTP caching is a poor fit for POST-style prompts. D: GPU nodes sized for peak mean high fixed cost plus operational burden.
+**Why not the others:** A: Capacity sized for peak is paid for even when traffic is low; it suits steady, predictable high load. B: A fallback endpoint does not reduce cost, and HTTP caching is a poor fit for POST-style prompts. C: GPU nodes sized for peak mean high fixed cost plus operational burden.
 
 ---
 
 **Q47. Your microservices run on GKE; some pods are "noisy neighbors" (hogging CPU, affecting other pods' latency). How do you isolate them?**
 
-- A) Resource Requests/Limits in pod spec (ensure each pod gets guaranteed resources).
-- B) Pod Priority + Pod Disruption Budget (prioritize critical pods).
+- A) Pod Priority + Pod Disruption Budget (prioritize critical pods).
+- B) Resource Requests/Limits in pod spec (ensure each pod gets guaranteed resources).
 - C) Separate node pools (noisy pods in dedicated pool, critical pods in another).
 - D) Increase node count (more resources for everyone).
 
-**Answer: A** - Requests guarantee resource allocation (QoS); Limits cap usage. Pod won't starve others if Requests/Limits are correct. Cheapest solution.
+**Answer: B** - Requests guarantee resource allocation (QoS); Limits cap usage. Pod won't starve others if Requests/Limits are correct. Cheapest solution.
 
-**Why not the others:** B: Priority/PDB handle eviction, not resource isolation. C: Separate pools works but costs more. D: More nodes don't isolate; noisy pod still hogs its node's CPU.
+**Why not the others:** A: Priority/PDB handle eviction, not resource isolation. C: Separate pools works but costs more. D: More nodes don't isolate; noisy pod still hogs its node's CPU.
 
 ---
 
 **Q48. Your company has a 24/7 on-call rotation (4 engineers, each on-call 1 week/month). Alert fatigue is high; on-calls are burnout-prone. How do you improve?**
 
-- A) Add more on-call engineers (dilutes responsibility, doesn't fix alerts).
-- B) SLO burn-rate alerting + incident response runbooks + blameless postmortems + automated remediation of known low-risk issues.
+- A) SLO burn-rate alerting + incident response runbooks + blameless postmortems + automated remediation of known low-risk issues.
+- B) Add more on-call engineers (dilutes responsibility, doesn't fix alerts).
 - C) Mute low-priority alerts.
 - D) Remove on-call rotation (move to best-effort SLA).
 
-**Answer: B** - SLO burn-rate reduces noise (only real problems alert). Runbooks enable faster resolution. Postmortems reduce recurrence. Automated remediation removes toil for well-understood issues. Sustainable on-call.
+**Answer: A** - SLO burn-rate reduces noise (only real problems alert). Runbooks enable faster resolution. Postmortems reduce recurrence. Automated remediation removes toil for well-understood issues. Sustainable on-call.
 
-**Why not the others:** A: More engineers = more cost, same alert fatigue. C: Muting ignores problems. D: Removing on-call abandons reliability.
+**Why not the others:** B: More engineers = more cost, same alert fatigue. C: Muting ignores problems. D: Removing on-call abandons reliability.
 
 ---
 
@@ -1804,26 +1804,26 @@
 **Q49. Altostrat Media scenario: They want to automatically detect and remove harmful content (hateful speech, violence) from user-generated podcasts before publishing. Latency constraint: must complete within podcast's editing window (~30 min). What architecture?**
 
 - A) Real-time Gemini content moderation (analyze stream while recording).
-- B) Batch pipeline per podcast (Cloud Run jobs or Dataflow): Speech-to-Text transcript → text moderation (Natural Language API or Gemini with safety settings) + explicit-content detection on video frames → flagged items to a human review queue.
-- C) Agent Platform custom training on hateful-content dataset (long training, ongoing).
+- B) Agent Platform custom training on hateful-content dataset (long training, ongoing).
+- C) Batch pipeline per podcast (Cloud Run jobs or Dataflow): Speech-to-Text transcript → text moderation (Natural Language API or Gemini with safety settings) + explicit-content detection on video frames → flagged items to a human review queue.
 - D) Manually review all podcasts (no automation).
 
-**Answer: B** - A per-podcast batch pipeline fits a ~30-minute window. Speech-to-Text, moderation and image/video analysis are pre-built (no training). Humans review flagged content (HITL). Balanced cost + accuracy.
+**Answer: C** - A per-podcast batch pipeline fits a ~30-minute window. Speech-to-Text, moderation and image/video analysis are pre-built (no training). Humans review flagged content (HITL). Balanced cost + accuracy.
 
-**Why not the others:** A: Live analysis while recording is not required by a 30-minute window and is costlier. C: Custom training adds weeks; pre-built APIs sufficient. D: Manual doesn't scale.
+**Why not the others:** A: Live analysis while recording is not required by a 30-minute window and is costlier. B: Custom training adds weeks; pre-built APIs sufficient. D: Manual doesn't scale.
 
 ---
 
 **Q50. Cymbal Retail scenario: They want conversational product discovery (user asks "show me blue winter coats under $100 with fast shipping"). The bot must call inventory API, recommend SKUs, and handle order placement. Constraint: responses must feel interactive (about 1 second to first token, streamed), multi-turn conversation. What design?**
 
-- A) Gemini Flash + grounding on the product catalog (vector search / RAG) + function calling to the synchronous inventory API (via Cloud Run) and the order API + Agent Platform Sessions (conversation memory).
-- B) Custom agent (Agent Builder) + fine-tune Gemini on Cymbal support conversations.
+- A) Custom agent (Agent Builder) + fine-tune Gemini on Cymbal support conversations.
+- B) Gemini Flash + grounding on the product catalog (vector search / RAG) + function calling to the synchronous inventory API (via Cloud Run) and the order API + Agent Platform Sessions (conversation memory).
 - C) Apigee + Cloud Run functions (stateful conversation endpoint); no LLM, pure business logic.
 - D) BigQuery SQL (query product table) + Cloud Workflows (orchestrate APIs) + no LLM.
 
-**Answer: A** - Gemini Flash (fast) + RAG grounds on product data (accurate recommendations). Function calling integrates inventory/order systems through synchronous APIs (Cloud Tasks is asynchronous and would not return stock results to the conversation). Agent Platform Sessions maintain conversation state across turns. Streaming keeps perceived latency low.
+**Answer: B** - Gemini Flash (fast) + RAG grounds on product data (accurate recommendations). Function calling integrates inventory/order systems through synchronous APIs (Cloud Tasks is asynchronous and would not return stock results to the conversation). Agent Platform Sessions maintain conversation state across turns. Streaming keeps perceived latency low.
 
-**Why not the others:** B: Fine-tuning adds latency + cost. C: No LLM misses conversational understanding. D: Pure SQL is rigid; can't handle natural language.
+**Why not the others:** A: Fine-tuning adds latency + cost. C: No LLM misses conversational understanding. D: Pure SQL is rigid; can't handle natural language.
 
 ---
 

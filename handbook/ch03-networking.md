@@ -350,14 +350,14 @@ Exam pattern: "organization with 10 regional VPCs and on-prem data center; needs
 
 **Question:** How do you route external HTTPS traffic globally with automatic failover?
 
-A) Regional Network LB per region, users manually choose region  
-B) Global HTTP(S) LB with multi-region backends, anycast IP  
-C) 3 separate Cloud VPNs bridging clusters  
-D) Global external proxy Network LB (SSL/TCP Proxy)  
+- A) Regional Network LB per region, users manually choose region
+- B) 3 separate Cloud VPNs bridging clusters
+- C) Global external proxy Network LB (SSL/TCP Proxy)
+- D) Global HTTP(S) LB with multi-region backends, anycast IP
 
-**Answer:** B
+**Answer:** D
 
-**Why:** Global HTTP(S) LB is the standard for multi-region HTTP services. Anycast IP guarantees traffic routes to the nearest healthy backend (HA & latency). B is correct. A (manual failover) doesn't meet 99.99 % SLA. C (VPN) is for hybrid, not multi-region. D (proxy Network LB) is for non-HTTP TCP/TLS; it lacks the HTTP-aware routing, CDN and WAF integration of the Application LB.
+**Why:** Global HTTP(S) LB is the standard for multi-region HTTP services. Anycast IP guarantees traffic routes to the nearest healthy backend (HA & latency). D is correct. A (manual failover) doesn't meet 99.99 % SLA. B (VPN) is for hybrid, not multi-region. C (proxy Network LB) is for non-HTTP TCP/TLS; it lacks the HTTP-aware routing, CDN and WAF integration of the Application LB.
 
 ---
 
@@ -367,10 +367,10 @@ D) Global external proxy Network LB (SSL/TCP Proxy)
 
 **Question:** Which hybrid connectivity minimizes cost while meeting latency SLA?
 
-A) HA VPN (two tunnels or more, BGP via Cloud Router)  
-B) Dedicated Interconnect (10 Gbps)  
-C) Partner Interconnect via local telecom  
-D) Cross-Cloud Interconnect to AWS (for redundancy)  
+- A) HA VPN (two tunnels or more, BGP via Cloud Router)
+- B) Dedicated Interconnect (10 Gbps)
+- C) Partner Interconnect via local telecom
+- D) Cross-Cloud Interconnect to AWS (for redundancy)
 
 **Answer:** A
 
@@ -384,14 +384,14 @@ D) Cross-Cloud Interconnect to AWS (for redundancy)
 
 **Question:** What is the most Kubernetes-native way to enforce pod isolation?
 
-A) VPC Firewall Rules blocking inter-pod CIDR ranges  
-B) Kubernetes Network Policies with Calico/Dataplane V2  
-C) GKE Shared VPC with separate service projects per team  
-D) Cloud Armor policies on each pod's ingress service  
+- A) VPC Firewall Rules blocking inter-pod CIDR ranges
+- B) GKE Shared VPC with separate service projects per team
+- C) Kubernetes Network Policies with Calico/Dataplane V2
+- D) Cloud Armor policies on each pod's ingress service
 
-**Answer:** B
+**Answer:** C
 
-**Why:** Kubernetes Network Policies are the native K8s API for pod-to-pod ACLs. Requires VPC-native GKE + CNI (Calico or GKE Dataplane V2). B is correct. A (VPC Firewall) can't target individual pods (sees only node IPs). C (Shared VPC) is for project isolation, not pod isolation. D (Cloud Armor) is for HTTP(S) LB, not pod traffic.
+**Why:** Kubernetes Network Policies are the native K8s API for pod-to-pod ACLs. Requires VPC-native GKE + CNI (Calico or GKE Dataplane V2). C is correct. A (VPC Firewall) can't target individual pods (sees only node IPs). B (Shared VPC) is for project isolation, not pod isolation. D (Cloud Armor) is for HTTP(S) LB, not pod traffic.
 
 ---
 
@@ -401,10 +401,10 @@ D) Cloud Armor policies on each pod's ingress service
 
 **Question:** Which GCP service best simplifies this topology?
 
-A) VPC Peering (all-to-all)  
-B) Network Connectivity Center  
-C) Shared VPC  
-D) Cloud VPN (all VPCs to on-prem)  
+- A) VPC Peering (all-to-all)
+- B) Network Connectivity Center
+- C) Shared VPC
+- D) Cloud VPN (all VPCs to on-prem)
 
 **Answer:** B
 
@@ -418,14 +418,14 @@ D) Cloud VPN (all VPCs to on-prem)
 
 **Question:** Best approach?
 
-A) Attach all Cloud Run services to Serverless VPC Access connectors → Cloud NAT  
-B) Direct VPC Egress into a VPC subnet + Cloud NAT with reserved static IPs (on-prem reached via the existing VPN routes)  
-C) Switch to private APIs via Private Service Connect  
-D) Use API Gateway to cache external API responses  
+- A) Direct VPC Egress into a VPC subnet + Cloud NAT with reserved static IPs (on-prem reached via the existing VPN routes)
+- B) Attach all Cloud Run services to Serverless VPC Access connectors → Cloud NAT
+- C) Switch to private APIs via Private Service Connect
+- D) Use API Gateway to cache external API responses
 
-**Answer:** B
+**Answer:** A
 
-**Why:** Direct VPC egress places Cloud Run instances in your subnet (no connector VMs, higher throughput, lower latency than connectors), gives access to VPN/Interconnect routes for on-prem, and Cloud NAT with reserved external IPs provides the stable source IPs vendors can allowlist. A also works functionally but connectors are the older option with per-instance cost. C (PSC) targets Google APIs/published services, not arbitrary internet SaaS. D (caching) does not provide a fixed source IP.
+**Why:** Direct VPC egress places Cloud Run instances in your subnet (no connector VMs, higher throughput, lower latency than connectors), gives access to VPN/Interconnect routes for on-prem, and Cloud NAT with reserved external IPs provides the stable source IPs vendors can allowlist. B also works functionally but connectors are the older option with per-instance cost. C (PSC) targets Google APIs/published services, not arbitrary internet SaaS. D (caching) does not provide a fixed source IP.
 
 ---
 
@@ -435,14 +435,14 @@ D) Use API Gateway to cache external API responses
 
 **Question:** Which control should be applied at the LB layer?
 
-A) Cloud Armor security policy (preconfigured SQLi WAF rules, geo-based rules, rate limiting)  
-B) VPC Firewall Rules (block source IPs)  
-C) Private Service Connect to the backend  
-D) Cloud DNS query logging  
+- A) VPC Firewall Rules (block source IPs)
+- B) Cloud Armor security policy (preconfigured SQLi WAF rules, geo-based rules, rate limiting)
+- C) Private Service Connect to the backend
+- D) Cloud DNS query logging
 
-**Answer:** A
+**Answer:** B
 
-**Why:** Cloud Armor attaches to the external Application LB and can apply preconfigured SQLi/XSS rules, geo-based allow/deny and rate limiting (e.g., per header/IP). B (VPC firewall) acts on the VM after the LB proxy and cannot inspect HTTP payloads. C (PSC) is a connectivity mechanism, not a filtering control. D (DNS logging) is irrelevant. Note: IP-geolocation rules are not proof of user location (VPNs), and a leaked API key should also be revoked/rotated, not only rate-limited.
+**Why:** Cloud Armor attaches to the external Application LB and can apply preconfigured SQLi/XSS rules, geo-based allow/deny and rate limiting (e.g., per header/IP). A (VPC firewall) acts on the VM after the LB proxy and cannot inspect HTTP payloads. C (PSC) is a connectivity mechanism, not a filtering control. D (DNS logging) is irrelevant. Note: IP-geolocation rules are not proof of user location (VPNs), and a leaked API key should also be revoked/rotated, not only rate-limited.
 
 
 ## Sources

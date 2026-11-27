@@ -299,21 +299,21 @@ START: "Move data to GCS?"
 
 **Scenario 1**: Your company migrates a 50-VM on-prem SQL Server farm to GCP. Timeline: 6 months. Business says "≥ 99.95 % availability post-migration, and we want costs down 30 %." 3 VMs are mission-critical (ERP). What's the recommended strategy?
 
-A) Rehost the 50 VMs on Compute Engine with Migrate to Virtual Machines (sole-tenant nodes only where BYOL licences are needed); move the 3 mission-critical ERP databases to Cloud SQL for SQL Server HA via Database Migration Service; use Cloud Interconnect for the hybrid link during coexistence (6 months); test failover weekly.  
-B) Replatform all SQL Server instances to Cloud SQL for PostgreSQL (heterogeneous conversion); rehost app VMs on Compute Engine; retire on-prem data center immediately; expect 50 % cost savings.  
-C) Retire 30 VMs deemed redundant; rehost 15 on Compute Engine; refactor ERP to microservices on GKE (risky, timeline too tight).  
-D) Retain everything on-prem; migrate non-critical data to cloud analytics (BigQuery) only; minimize disruption.
+- A) Replatform all SQL Server instances to Cloud SQL for PostgreSQL (heterogeneous conversion); rehost app VMs on Compute Engine; retire on-prem data center immediately; expect 50 % cost savings.
+- B) Retire 30 VMs deemed redundant; rehost 15 on Compute Engine; refactor ERP to microservices on GKE (risky, timeline too tight).
+- C) Retain everything on-prem; migrate non-critical data to cloud analytics (BigQuery) only; minimize disruption.
+- D) Rehost the 50 VMs on Compute Engine with Migrate to Virtual Machines (sole-tenant nodes only where BYOL licences are needed); move the 3 mission-critical ERP databases to Cloud SQL for SQL Server HA via Database Migration Service; use Cloud Interconnect for the hybrid link during coexistence (6 months); test failover weekly.
 
-**Answer: A.** Rehost ensures fast timeline (urgent apps). BYOL licensing on sole-tenant nodes only where the licence saving justifies the premium. Cloud SQL for SQL Server HA gives a 99.95 % SLA (Enterprise edition; meets target) and DMS keeps cutover downtime low. Interconnect handles frequent ERP queries (on-prem app → cloud DB). Coexistence & testing reduce risk. *Why not B:* SQL Server schema/stored procedures → Cloud SQL PostgreSQL is risky refactor (timeline too tight). *Why not C:* Refactor during tight timeline = risk. *Why not D:* No progress; on-prem costs stay high.
+**Answer: D.** Rehost ensures fast timeline (urgent apps). BYOL licensing on sole-tenant nodes only where the licence saving justifies the premium. Cloud SQL for SQL Server HA gives a 99.95 % SLA (Enterprise edition; meets target) and DMS keeps cutover downtime low. Interconnect handles frequent ERP queries (on-prem app → cloud DB). Coexistence & testing reduce risk. *Why not A:* SQL Server schema/stored procedures → Cloud SQL PostgreSQL is risky refactor (timeline too tight). *Why not B:* Refactor during tight timeline = risk. *Why not C:* No progress; on-prem costs stay high.
 
 ---
 
 **Scenario 2**: You're assessing a 1 PB data lake (Hadoop HDFS on-prem) for cloud migration. Network bandwidth from data center to internet: 1 Mbps. Which data-transfer approach minimizes cost and time?
 
-A) Use Storage Transfer Service with parallelization; budget 3 months transfer time.  
-B) Order Transfer Appliances (TA300, 300 TB usable each; about 4 units, loaded and shipped in rotation).  
-C) Establish a Cloud Interconnect 100 Gbps; reduce the transfer to days; accept recurring port cost and provisioning lead time.  
-D) Retain 80 % on-prem (Hadoop); migrate 20 % to BigQuery incrementally via STS.
+- A) Use Storage Transfer Service with parallelization; budget 3 months transfer time.
+- B) Order Transfer Appliances (TA300, 300 TB usable each; about 4 units, loaded and shipped in rotation).
+- C) Establish a Cloud Interconnect 100 Gbps; reduce the transfer to days; accept recurring port cost and provisioning lead time.
+- D) Retain 80 % on-prem (Hadoop); migrate 20 % to BigQuery incrementally via STS.
 
 **Answer: B.** 1 PB = 1,000,000 GB. At 1 Mbps: 1,000,000 x 8000 / 1 / 3600 ≈ 2.2 million hours, i.e. roughly 250 years (1 Mbps is only ~10 GB/day), so any online option over that link is unfeasible. Transfer Appliance TA300 holds up to 300 TB usable, so 1 PB needs about 4 appliances, rotated/parallel; the offline route takes weeks rather than centuries. *Why not A:* STS over 1 Mbps would take centuries, not 3 months. *Why not C:* a 100 Gbps Interconnect is technically fast but needs a long provisioning lead time, a colocation/port presence and recurring cost for a one-off move, and the on-prem HDFS source must also sustain that throughput; Transfer Appliance is the standard answer for a bulk one-off with a tiny link (note ingress to Google Cloud is free, so egress fees are not a factor). *Why not D:* Leaves 80 % on-prem; doesn't address the "full migration" goal.
 
@@ -321,21 +321,21 @@ D) Retain 80 % on-prem (Hadoop); migrate 20 % to BigQuery incrementally via STS.
 
 **Scenario 3**: EHR Healthcare is migrating MySQL + Redis on-prem to cloud. Data: 500 GB MySQL, 50 GB Redis. Timeline: 4 months. Network: 10 Mbps ISP link (during business hours only; nights available for heavy sync). Cutover planned for weekend 6-hour window. What's the migration data strategy?
 
-A) STS both MySQL + Redis online to Cloud Storage; use Datastream for continuous MySQL sync (post-cutover); manual Redis refresh at cutover.  
-B) Mysqldump to Cloud Storage (STS), Memorystore snapshot offline + sneaker-net USB drive to Google (absurd, but testing if you know the tool limits).  
-C) Use Database Migration Service for MySQL (continuous replication); manually dump Redis to .rdb file, STS to GCS, restore to Memorystore at cutover.  
-D) Keep both on-prem; replicate to cloud weekly; never truly migrate (not a valid answer but testing if you know "retain" means staying on-prem, not hybrid sync).
+- A) STS both MySQL + Redis online to Cloud Storage; use Datastream for continuous MySQL sync (post-cutover); manual Redis refresh at cutover.
+- B) Take a full mysqldump and a Redis snapshot at cutover, copy both to Cloud Storage over the 10 Mbps link during the 6-hour window, then restore them.
+- C) Use Database Migration Service for MySQL (continuous replication); manually dump Redis to .rdb file, STS to GCS, restore to Memorystore at cutover.
+- D) Migrate only MySQL with Database Migration Service and leave Redis on-prem permanently, reached from Google Cloud over Cloud VPN.
 
-**Answer: C.** DMS handles continuous MySQL replication (homogeneous, low-risk, near-zero downtime). Redis is key-value (not a "database" in DMS sense); dump .rdb file (point-in-time snapshot) to Cloud Storage via STS or gcloud storage (50 GB at 10 Mbps ≈ 50 x 8000 / 10 / 3600 ≈ 11 hours of link time, so schedule it on a night before cutover; the 500 GB MySQL initial load is ≈ 111 hours of link time, spread over nights during the 4 months), then import into Memorystore at cutover (minutes to tens of minutes). 6-hour window: MySQL final sync (seconds to minutes if replication has caught up), Redis import, validation (~1 hour). Fits comfortably, provided Redis data is a cache or can tolerate the snapshot gap. *Why not A:* STS is for object storage (GCS), not direct DB replication. Datastream is change-capture (useful for BigQuery, not for cutover sync). *Why not B:* USB drive ("sneaker-net") is not a GCP tool; absurd. *Why not D:* Doesn't meet "migrate" objective.
+**Answer: C.** DMS handles continuous MySQL replication (homogeneous, low-risk, near-zero downtime). Redis is key-value (not a "database" in DMS sense); dump .rdb file (point-in-time snapshot) to Cloud Storage via STS or gcloud storage (50 GB at 10 Mbps ≈ 50 x 8000 / 10 / 3600 ≈ 11 hours of link time, so schedule it on a night before cutover; the 500 GB MySQL initial load is ≈ 111 hours of link time, spread over nights during the 4 months), then import into Memorystore at cutover (minutes to tens of minutes). 6-hour window: MySQL final sync (seconds to minutes if replication has caught up), Redis import, validation (~1 hour). Fits comfortably, provided Redis data is a cache or can tolerate the snapshot gap. *Why not A:* STS is for object storage (GCS), not direct DB replication. Datastream is change-capture (useful for BigQuery, not for cutover sync). *Why not B:* at 10 Mbps, about 550 GB takes roughly 122 hours of link time (550 x 8000 / 10 / 3600), far more than the 6-hour window; the bulk copy has to happen beforehand, with replication keeping it current. *Why not D:* leaves Redis on-prem, so the migration is incomplete and every cache call crosses the VPN, adding latency.
 
 ---
 
 **Scenario 4**: You're using Migration Center to assess 200 on-prem VMs for cloud readiness. Assessment shows: 150 rehost-ready, 30 refactor candidates (legacy Python, high batch load), 20 "complex" (custom hardware dependencies, proprietary protocols). Business says "Get 80 % migrated in 12 months." Which approach achieves this?
 
-A) Migrate all 150 rehost-ready in wave 1 (months 1–6), refactor 30 in wave 2 (months 7–12), retain 20 on-prem indefinitely.  
-B) Migrate 50 rehost-ready as PoC (months 1–3), then full 150 (months 4–9), defer 50 "complex" VMs, retry assessment in 6 months.  
-C) Replatform all 200 to Cloud Run, BigQuery, etc. (one-size-fits-all modernization).  
-D) Retire 50 % deemed "redundant" (no evidence given), migrate remaining 100 rehost-ready, retain 50 complex.
+- A) Migrate all 150 rehost-ready in wave 1 (months 1–6), refactor 30 in wave 2 (months 7–12), retain 20 on-prem indefinitely.
+- B) Migrate 50 rehost-ready as PoC (months 1–3), then full 150 (months 4–9), defer 50 "complex" VMs, retry assessment in 6 months.
+- C) Replatform all 200 to Cloud Run, BigQuery, etc. (one-size-fits-all modernization).
+- D) Retire 50 % deemed "redundant" (no evidence given), migrate remaining 100 rehost-ready, retain 50 complex.
 
 **Answer: A.** 150 + 30 = 180 VMs = 90 % cloud-bound (exceeds 80 % goal). Phased: rehost (fast, low-risk) first, then refactor (invest team effort later). 20 complex → retain (regulatory, custom hardware, can't migrate without massive refactor). Timeline realistic: rehost 150 in 6 months (~25 VMs/month, one pilot wave + 3–4 prod waves). Refactor 30 in next 6 months (higher effort, ~5–6 per month). *Why not B:* it only migrates the 150 rehost-ready VMs (75 % of 200), which misses the 80 % target, and it defers the 30 refactor candidates that A can still deliver. A pilot wave inside wave 1 is still good practice. *Why not C:* Cloud Run is wrong for most rehost-ready (VMs aren't HTTP services). *Why not D:* "Retire 50 %" without evidence is reckless (data loss risk).
 
@@ -343,23 +343,23 @@ D) Retire 50 % deemed "redundant" (no evidence given), migrate remaining 100 reh
 
 **Scenario 5**: A financial-services company plans BYOL Windows Server + SQL Server (hundreds of cores, expensive licenses) to GCP. CFO asks: "What's the total-cost impact over 3 years?" Which factors matter most?
 
-A) Just compare on-prem annual license cost vs GCP instance costs; if GCP higher per core, we've lost.  
-B) Sole-tenant node cost (premium over shared VMs, plus paying for whole nodes) + reduced license cost (if BYOL allows cloud discount) + eliminated data-center real-estate cost + staff overhead reduction (cloud-managed updates, backups). Then compare to on-prem (license + salary + power + real-estate).  
-C) Only consider GCP compute cost; licensing is vendor problem.  
-D) Assume BYOL doesn't work on GCP; plan to repurchase licenses (cloud-native alternatives).
+- A) Just compare on-prem annual license cost vs GCP instance costs; if GCP higher per core, we've lost.
+- B) Only consider GCP compute cost; licensing is vendor problem.
+- C) Sole-tenant node cost (premium over shared VMs, plus paying for whole nodes) + reduced license cost (if BYOL allows cloud discount) + eliminated data-center real-estate cost + staff overhead reduction (cloud-managed updates, backups). Then compare to on-prem (license + salary + power + real-estate).
+- D) Assume BYOL doesn't work on GCP; plan to repurchase licenses (cloud-native alternatives).
 
-**Answer: B.** TCO is multidimensional: license cost, infrastructure cost, staffing (ops salary), facilities (real-estate, power). BYOL on sole-tenant nodes *may* reduce per-core license cost (vendor discount for cloud) or keep same (vendor doesn't discount). Sole-tenant premium (~$X/month/instance) likely offset by: (1) eliminated data-center real-estate ($Y/mo), (2) reduced FTE ops staff (cloud-managed, fewer on-call incidents), (3) potential energy/cooling cost reduction (Google fleet PUE ≈ 1.1 vs typical on-prem 1.5+ ⚠ verify). 3-year TCO requires summing all. *Why not A:* Ignores staffing, real-estate, managed-service benefits. *Why not C:* Licensing is often majority cost for financial services (strict compliance requirements, per-core pricing high). *Why not D:* BYOL works on GCP; check vendor terms, not all prohibit it.
+**Answer: C.** TCO is multidimensional: license cost, infrastructure cost, staffing (ops salary), facilities (real-estate, power). BYOL on sole-tenant nodes *may* reduce per-core license cost (vendor discount for cloud) or keep same (vendor doesn't discount). Sole-tenant premium (~$X/month/instance) likely offset by: (1) eliminated data-center real-estate ($Y/mo), (2) reduced FTE ops staff (cloud-managed, fewer on-call incidents), (3) potential energy/cooling cost reduction (Google fleet PUE ≈ 1.1 vs typical on-prem 1.5+ ⚠ verify). 3-year TCO requires summing all. *Why not A:* Ignores staffing, real-estate, managed-service benefits. *Why not B:* Licensing is often majority cost for financial services (strict compliance requirements, per-core pricing high). *Why not D:* BYOL works on GCP; check vendor terms, not all prohibit it.
 
 ---
 
 **Scenario 6**: Altostrat Media is migrating on-prem media ingestion pipeline (batch ETL, daily, 500 GB data per day) to cloud. Current: Bash scripts, NFS storage, on-prem VMs. Target architecture must: (1) auto-scale; (2) cost-optimized; (3) low ops overhead; (4) support future real-time streaming. What's the recommended migration path?
 
-A) Rehost: keep Bash scripts, run on Compute Engine VMs (GCE autoscaling group), NFS → Cloud Filestore (same paradigm, minimal code change).  
-B) Replatform: Bash → Python, containerize, deploy to GKE (manual scheduling). Store in Cloud Storage (cheaper, durable, no NFS).  
-C) Refactor: Bash → Dataflow pipeline (managed, auto-scaling, fault-tolerant, BigQuery sink for downstream analytics). Cloud Storage for raw media. Future: swap batch → streaming (Dataflow Streaming API).  
-D) Repurchase: switch to Palantir / Apache Airflow Cloud offering; they handle scaling.
+- A) Rehost: keep Bash scripts, run on Compute Engine VMs (GCE autoscaling group), NFS → Cloud Filestore (same paradigm, minimal code change).
+- B) Refactor: Bash → Dataflow pipeline (managed, auto-scaling, fault-tolerant, BigQuery sink for downstream analytics). Cloud Storage for raw media. Future: swap batch → streaming (Dataflow Streaming API).
+- C) Replatform: Bash → Python, containerize, deploy to GKE (manual scheduling). Store in Cloud Storage (cheaper, durable, no NFS).
+- D) Repurchase: switch to Palantir / Apache Airflow Cloud offering; they handle scaling.
 
-**Answer: C.** Batch ETL is Dataflow's bread-and-butter. Dataflow (managed beam) auto-scales (parallelizes 500 GB ingestion), requires zero VM management, integrates Cloud Storage + BigQuery seamlessly. Cost-optimized (pay per second, autoshuts down). Bash script complexity → Python Beam (mature, large community). *Future-ready*: Dataflow supports batch & streaming (same code, just toggle API), enabling real-time when Altostrat needs it. *Why not A:* Rehost adds VM management burden (GCE autoscaling needs tuning). "Low ops overhead" lost. *Why not B:* GKE adds cluster ops (node pools, upgrades). More complex than Dataflow for batch-only pipeline. *Why not D:* Repurchase (third-party SaaS) introduces vendor lock-in, higher cost for simple batch job. Overkill.
+**Answer: B.** Batch ETL is Dataflow's bread-and-butter. Dataflow (managed beam) auto-scales (parallelizes 500 GB ingestion), requires zero VM management, integrates Cloud Storage + BigQuery seamlessly. Cost-optimized (pay per second, autoshuts down). Bash script complexity → Python Beam (mature, large community). *Future-ready*: Dataflow supports batch & streaming (same code, just toggle API), enabling real-time when Altostrat needs it. *Why not A:* Rehost adds VM management burden (GCE autoscaling needs tuning). "Low ops overhead" lost. *Why not C:* GKE adds cluster ops (node pools, upgrades). More complex than Dataflow for batch-only pipeline. *Why not D:* Repurchase (third-party SaaS) introduces vendor lock-in, higher cost for simple batch job. Overkill.
 
 ## Sources
 
